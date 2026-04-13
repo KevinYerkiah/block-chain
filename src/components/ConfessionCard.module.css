@@ -1,0 +1,49 @@
+.card {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s ease;
+}
+
+.card:hover {
+    background: var(--surface);
+}
+
+.content {
+    flex: 1;
+    min-width: 0;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.displayName {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.username,
+.separator,
+.time {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.body {
+    margin-top: 4px;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.timerWrapper {
+    margin-top: 4px;
+}

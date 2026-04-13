@@ -1,0 +1,17 @@
+.searchSection {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.results {
+    /* Cards handle their own borders */
+}
+
+.empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 48px 16px;
+    color: var(--text-secondary);
+    text-align: center;
+}

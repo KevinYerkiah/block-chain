@@ -1,0 +1,11 @@
+.timer {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.timer.onChain {
+    color: var(--success);
+    font-weight: 600;
+    font-style: normal;
+}

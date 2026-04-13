@@ -1,0 +1,153 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../config/supabase.js';
+import { verifyIntegrity, verifyBlockchainIntegrity } from '../security/hashIntegrity.js';
+import IconButton from './ui/IconButton.jsx';
+import { CommentIcon, UpvoteIcon, DownvoteIcon, ShieldIcon } from './ui/icons.jsx';
+import styles from './ActionBar.module.css';
+
+export default function ActionBar({
+    confessionId,
+    currentUserId,
+    isOnChain,
+    contentHash,
+    blockchainTxHash,
+    decryptedContent,
+}) {
+    const [commentCount, setCommentCount] = useState(0);
+    const [voteCount, setVoteCount] = useState(0);
+    const [userVote, setUserVote] = useState(null); // 'up' | 'down' | null
+    const [verifyStatus, setVerifyStatus] = useState(null); // 'verified' | 'failed' | 'pending'
+
+    useEffect(() => {
+        fetchCounts();
+        fetchUserVote();
+    }, [confessionId, currentUserId]);
+
+    const fetchCounts = async () => {
+        // Comment count
+        const { count: comments } = await supabase
+            .from('comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('confession_id', confessionId);
+        setCommentCount(comments || 0);
+
+        // Vote count
+        const { data: votes } = await supabase
+            .from('votes')
+            .select('vote_type')
+            .eq('confession_id', confessionId);
+
+        const net = (votes || []).reduce((sum, v) => sum + v.vote_type, 0);
+        setVoteCount(net);
+    };
+
+    const fetchUserVote = async () => {
+        const { data } = await supabase
+            .from('votes')
+            .select('vote_type')
+            .eq('confession_id', confessionId)
+            .eq('user_id', currentUserId)
+            .maybeSingle();
+
+        if (data) {
+            setUserVote(data.vote_type === 1 ? 'up' : 'down');
+        } else {
+            setUserVote(null);
+        }
+    };
+
+    const handleVote = async (type) => {
+        const newVote = userVote === type ? null : type;
+        const voteValue = type === 'up' ? 1 : -1;
+
+        try {
+            if (newVote === null) {
+                // Remove vote
+                await supabase
+                    .from('votes')
+                    .delete()
+                    .eq('confession_id', confessionId)
+                    .eq('user_id', currentUserId);
+            } else {
+                // Upsert vote
+                await supabase.from('votes').upsert({
+                    confession_id: confessionId,
+                    user_id: currentUserId,
+                    vote_type: voteValue,
+                }, {
+                    onConflict: 'user_id,confession_id'
+                });
+            }
+
+            // Update local state immediately for responsive UI
+            const oldVoteValue = userVote === 'up' ? 1 : userVote === 'down' ? -1 : 0;
+            const newVoteValue = newVote === 'up' ? 1 : newVote === 'down' ? -1 : 0;
+            setVoteCount(voteCount - oldVoteValue + newVoteValue);
+            setUserVote(newVote);
+        } catch (error) {
+            console.error('Vote error:', error);
+        }
+    };
+
+    const handleVerify = async () => {
+        setVerifyStatus('pending');
+
+        try {
+            // First check local hash
+            const localVerified = await verifyIntegrity(decryptedContent, contentHash);
+            if (!localVerified) {
+                setVerifyStatus('failed');
+                return;
+            }
+
+            // If on chain, verify blockchain
+            if (isOnChain && blockchainTxHash) {
+                const { verified } = await verifyBlockchainIntegrity(blockchainTxHash, decryptedContent);
+                setVerifyStatus(verified === null ? 'pending' : verified ? 'verified' : 'failed');
+            } else {
+                setVerifyStatus('verified');
+            }
+        } catch {
+            setVerifyStatus('failed');
+        }
+    };
+
+    const voteColor = voteCount > 0 ? 'var(--success)' : voteCount < 0 ? 'var(--danger)' : 'var(--text-secondary)';
+    const shieldColor = verifyStatus === 'verified' ? 'var(--success)' : verifyStatus === 'failed' ? 'var(--danger)' : verifyStatus === 'pending' ? 'var(--warning)' : 'var(--text-secondary)';
+
+    return (
+        <div className={styles.actionBar}>
+            <IconButton
+                icon={<CommentIcon size={18} />}
+                label="Comment"
+                count={commentCount}
+            />
+
+            <div className={styles.voteGroup}>
+                <IconButton
+                    icon={<UpvoteIcon size={18} filled={userVote === 'up'} />}
+                    label="Upvote"
+                    active={userVote === 'up'}
+                    activeColor="var(--success)"
+                    onClick={() => handleVote('up')}
+                />
+                <span className={styles.voteCount} style={{ color: voteColor }}>
+                    {voteCount}
+                </span>
+                <IconButton
+                    icon={<DownvoteIcon size={18} filled={userVote === 'down'} />}
+                    label="Downvote"
+                    active={userVote === 'down'}
+                    activeColor="var(--danger)"
+                    onClick={() => handleVote('down')}
+                />
+            </div>
+
+            <IconButton
+                icon={<ShieldIcon size={18} filled={verifyStatus === 'verified'} color={shieldColor} />}
+                label="Verify"
+                onClick={handleVerify}
+            />
+        </div>
+    );
+}

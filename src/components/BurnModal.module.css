@@ -1,0 +1,39 @@
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.iconWrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--danger);
+    text-align: center;
+}
+
+.warning {
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.cancel {
+    font-size: 15px;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    padding: 8px;
+}
+
+.cancel:hover {
+    color: var(--text-primary);
+}

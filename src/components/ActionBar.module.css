@@ -1,0 +1,19 @@
+.actionBar {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    margin-top: 8px;
+}
+
+.voteGroup {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.voteCount {
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: center;
+}

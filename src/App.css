@@ -1,0 +1,25 @@
+/* App-level layout */
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sidebarWrapper {
+  width: 260px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.mainWrapper {
+  flex: 1;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  max-width: 600px;
+  min-height: 100vh;
+}

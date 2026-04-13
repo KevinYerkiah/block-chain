@@ -1,0 +1,26 @@
+.textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--input-bg);
+    border: none;
+    border-radius: 0;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+}
+
+.textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.textarea:focus {
+    outline: none;
+}
+
+.textarea:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

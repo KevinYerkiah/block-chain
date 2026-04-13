@@ -1,0 +1,20 @@
+.loading,
+.notFound {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 48px 16px;
+    color: var(--text-secondary);
+}
+
+.confessions {
+    /* Cards handle their own borders */
+}
+
+.empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 48px 16px;
+    color: var(--text-secondary);
+}

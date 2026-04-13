@@ -1,0 +1,30 @@
+.iconButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.iconButton:hover {
+    background: var(--hover-bg);
+}
+
+.iconButton.active {
+    font-weight: 600;
+}
+
+.icon {
+    display: flex;
+    align-items: center;
+}
+
+.count {
+    font-size: 13px;
+}

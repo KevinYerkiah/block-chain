@@ -1,0 +1,95 @@
+/* =============================================================================
+   Global Resets & CSS Custom Properties
+   All hex values live here once. Components use var() or import colors.js.
+   ============================================================================= */
+
+:root {
+  /* Primary */
+  --primary:          #E8601C;
+  --primary-hover:    #D4520F;
+  --primary-light:    #FDEAD7;
+  --primary-faint:    #FFF7F2;
+
+  /* Neutrals */
+  --background:       #FFFFFF;
+  --surface:          #FAFAF9;
+  --border:           #E7E5E4;
+  --border-light:     #F5F5F4;
+
+  /* Text */
+  --text-primary:     #1C1917;
+  --text-secondary:   #78716C;
+  --text-muted:       #A8A29E;
+  --text-on-primary:  #FFFFFF;
+
+  /* Feedback */
+  --success:          #16A34A;
+  --success-light:    #DCFCE7;
+  --danger:           #DC2626;
+  --danger-light:     #FEE2E2;
+  --danger-faint:     #FEF2F2;
+  --warning:          #F59E0B;
+  --warning-light:    #FEF3C7;
+
+  /* Inputs */
+  --input-bg:         #FFFFFF;
+  --input-border:     #D6D3D1;
+  --input-focus:      #E8601C;
+  --hover-bg:         rgba(232, 96, 28, 0.06);
+
+  /* Sidebar */
+  --sidebar-bg:       #FFFFFF;
+  --sidebar-active:   #FDEAD7;
+  --sidebar-text:     #1C1917;
+  --sidebar-icon:     #78716C;
+
+  /* Shadows */
+  --shadow:           0 1px 3px rgba(28, 25, 23, 0.08);
+  --shadow-md:        0 4px 12px rgba(28, 25, 23, 0.10);
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--background);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  background: none;
+}
+
+input, textarea {
+  font-family: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+ul, ol {
+  list-style: none;
+}

@@ -1,0 +1,37 @@
+.header {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 53px;
+    padding: 0 16px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--text-primary);
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.backButton:hover {
+    background: var(--hover-bg);
+}
+
+.title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+}

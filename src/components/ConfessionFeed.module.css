@@ -1,0 +1,18 @@
+.feed {
+    /* Cards handle their own borders */
+}
+
+.loading,
+.empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 48px 16px;
+    color: var(--text-secondary);
+}
+
+.loadMore {
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+}
