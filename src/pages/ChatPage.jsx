@@ -82,11 +82,37 @@ export default function ChatPage() {
         };
 
         const enterLobby = async () => {
+            // Start countdown immediately — before any async work so the timer is
+            // never frozen waiting for Supabase round-trips.
+            setTimeLeft(300);
+            countdownInterval.current = setInterval(() => {
+                setTimeLeft(prev => {
+                    if (prev <= 1) {
+                        clearInterval(countdownInterval.current);
+                        clearInterval(heartbeatInterval.current);
+                        clearInterval(matchInterval.current);
+                        if (mounted) {
+                            setTimeoutMessage("No one's around right now. Try again later.");
+                            setTimeout(() => {
+                                if (mounted) {
+                                    setState('idle');
+                                    setTimeoutMessage('');
+                                }
+                            }, 3000);
+                        }
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
             try {
                 // 1. Clean stale queue entries and reset own entry
                 await supabase.rpc('clean_stale_queue');
                 await supabase.from('chat_queue').delete().eq('user_id', user.id);
                 await supabase.from('chat_queue').insert({ user_id: user.id });
+
+                if (!mounted) return;
 
                 // 2. Heartbeat — every 10 seconds
                 heartbeatInterval.current = setInterval(async () => {
@@ -96,26 +122,8 @@ export default function ChatPage() {
                         .eq('user_id', user.id);
                 }, 10000);
 
-                // 3. Realtime: instant match detection when other user creates the session.
-                //    Use a per-user channel name to avoid collisions between clients.
-                sessionChannel.current = supabase
-                    .channel(`lobby-${user.id}`)
-                    .on('postgres_changes', {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'chat_sessions',
-                    }, (payload) => {
-                        const session = payload.new;
-                        if ((session.user_a === user.id || session.user_b === user.id) && mounted) {
-                            transitionToVerifying(session.id, session.user_a === user.id);
-                        }
-                    })
-                    .subscribe();
-
-                // 4. Polling — every 3 seconds.
-                //    Two-step: first check if a session already exists (handles the case where
-                //    the other user called match_chat_users and the Realtime event was missed),
-                //    then try to create a new match.
+                // 3. Match polling — start immediately after queue insert so detection
+                //    works as soon as we're in the queue, regardless of Realtime status.
                 matchInterval.current = setInterval(async () => {
                     if (!mounted) return;
 
@@ -159,28 +167,22 @@ export default function ChatPage() {
                     }
                 }, 3000);
 
-                // 5. 5-minute countdown
-                setTimeLeft(300);
-                countdownInterval.current = setInterval(() => {
-                    setTimeLeft(prev => {
-                        if (prev <= 1) {
-                            clearInterval(countdownInterval.current);
-                            clearInterval(heartbeatInterval.current);
-                            clearInterval(matchInterval.current);
-                            if (mounted) {
-                                setTimeoutMessage("No one's around right now. Try again later.");
-                                setTimeout(() => {
-                                    if (mounted) {
-                                        setState('idle');
-                                        setTimeoutMessage('');
-                                    }
-                                }, 3000);
-                            }
-                            return 0;
+                // 4. Realtime: instant match detection when other user creates the session.
+                //    Use a per-user channel name to avoid collisions between clients.
+                sessionChannel.current = supabase
+                    .channel(`lobby-${user.id}`)
+                    .on('postgres_changes', {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'chat_sessions',
+                    }, (payload) => {
+                        const session = payload.new;
+                        if ((session.user_a === user.id || session.user_b === user.id) && mounted) {
+                            transitionToVerifying(session.id, session.user_a === user.id);
                         }
-                        return prev - 1;
-                    });
-                }, 1000);
+                    })
+                    .subscribe();
+
             } catch (error) {
                 console.error('Error entering lobby:', error);
             }
