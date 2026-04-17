@@ -82,11 +82,49 @@ export default function ChatPage() {
         };
 
         const enterLobby = async () => {
+            // Start countdown immediately — before any async work so the timer is
+            // never frozen waiting for Supabase round-trips.
+            setTimeLeft(300);
+            countdownInterval.current = setInterval(() => {
+                setTimeLeft(prev => {
+                    if (prev <= 1) {
+                        clearInterval(countdownInterval.current);
+                        clearInterval(heartbeatInterval.current);
+                        clearInterval(matchInterval.current);
+                        if (mounted) {
+                            setTimeoutMessage("No one's around right now. Try again later.");
+                            setTimeout(() => {
+                                if (mounted) {
+                                    setState('idle');
+                                    setTimeoutMessage('');
+                                }
+                            }, 3000);
+                        }
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
             try {
-                // 1. Clean stale queue entries and reset own entry
+                // 1. Clean up: end any lingering active sessions and reset queue entry.
+                //    Stale sessions from previous runs would otherwise be found by Step A
+                //    immediately, causing a false match transition.
+                const { data: staleSessions } = await supabase
+                    .from('chat_sessions')
+                    .select('id')
+                    .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+                    .eq('is_active', true);
+                if (staleSessions) {
+                    for (const s of staleSessions) {
+                        await supabase.rpc('end_chat_session', { p_session_id: s.id });
+                    }
+                }
                 await supabase.rpc('clean_stale_queue');
                 await supabase.from('chat_queue').delete().eq('user_id', user.id);
                 await supabase.from('chat_queue').insert({ user_id: user.id });
+
+                if (!mounted) return;
 
                 // 2. Heartbeat — every 10 seconds
                 heartbeatInterval.current = setInterval(async () => {
@@ -96,7 +134,55 @@ export default function ChatPage() {
                         .eq('user_id', user.id);
                 }, 10000);
 
-                // 3. Realtime: instant match detection when other user creates the session.
+                // 3. Match polling — start immediately after queue insert so detection
+                //    works as soon as we're in the queue, regardless of Realtime status.
+                matchInterval.current = setInterval(async () => {
+                    if (!mounted) return;
+
+                    // Step A: look for an existing active session for this user.
+                    // This catches the critical failure mode: if the other user created the session,
+                    // the queue entry is marked is_matched=TRUE, so match_chat_users returns nothing.
+                    // Without this check the user would be stuck in lobby forever.
+                    const { data: existing } = await supabase
+                        .from('chat_sessions')
+                        .select('id, user_a, user_b')
+                        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+                        .eq('is_active', true)
+                        .order('started_at', { ascending: false })
+                        .limit(1);
+
+                    if (existing && existing.length > 0 && mounted) {
+                        transitionToVerifying(existing[0].id, existing[0].user_a === user.id);
+                        return;
+                    }
+
+                    // Step B: try to create a new match.
+                    const { data: matchData, error: matchError } = await supabase.rpc('match_chat_users');
+                    if (matchError) {
+                        console.error('match_chat_users RPC error:', matchError);
+                    }
+                    if (matchData && matchData.length > 0 && mounted) {
+                        // Re-query with consistent ORDER BY so both users always pick the same
+                        // session if a race condition created two simultaneously.
+                        const { data: sessions } = await supabase
+                            .from('chat_sessions')
+                            .select('id, user_a, user_b')
+                            .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+                            .eq('is_active', true)
+                            .order('started_at', { ascending: false })
+                            .limit(1);
+
+                        if (sessions && sessions.length > 0 && mounted) {
+                            transitionToVerifying(sessions[0].id, sessions[0].user_a === user.id);
+                        } else if (mounted) {
+                            // Fallback: use what the RPC told us directly
+                            const match = matchData[0];
+                            transitionToVerifying(match.session_id, match.matched_user_a === user.id);
+                        }
+                    }
+                }, 3000);
+
+                // 4. Realtime: instant match detection when other user creates the session.
                 //    Use a per-user channel name to avoid collisions between clients.
                 sessionChannel.current = supabase
                     .channel(`lobby-${user.id}`)
@@ -112,75 +198,6 @@ export default function ChatPage() {
                     })
                     .subscribe();
 
-                // 4. Polling — every 3 seconds.
-                //    Two-step: first check if a session already exists (handles the case where
-                //    the other user called match_chat_users and the Realtime event was missed),
-                //    then try to create a new match.
-                matchInterval.current = setInterval(async () => {
-                    if (!mounted) return;
-
-                    // Step A: look for an existing active session for this user.
-                    // This catches the critical failure mode: if the other user created the session,
-                    // the queue entry is marked is_matched=TRUE, so match_chat_users returns nothing.
-                    // Without this check the user would be stuck in lobby forever.
-                    const { data: existing } = await supabase
-                        .from('chat_sessions')
-                        .select('id, user_a, user_b')
-                        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
-                        .eq('is_active', true)
-                        .limit(1);
-
-                    if (existing && existing.length > 0 && mounted) {
-                        transitionToVerifying(existing[0].id, existing[0].user_a === user.id);
-                        return;
-                    }
-
-                    // Step B: try to create a new match.
-                    const { data: matchData } = await supabase.rpc('match_chat_users');
-                    if (matchData && matchData.length > 0 && mounted) {
-                        // Re-query to pick the canonical session in case of a race condition
-                        // where both users called match_chat_users simultaneously and two sessions
-                        // were created. Both users will independently re-query and pick the same
-                        // first result.
-                        const { data: sessions } = await supabase
-                            .from('chat_sessions')
-                            .select('id, user_a, user_b')
-                            .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
-                            .eq('is_active', true)
-                            .limit(1);
-
-                        if (sessions && sessions.length > 0 && mounted) {
-                            transitionToVerifying(sessions[0].id, sessions[0].user_a === user.id);
-                        } else if (mounted) {
-                            // Fallback: use what the RPC told us directly
-                            const match = matchData[0];
-                            transitionToVerifying(match.session_id, match.matched_user_a === user.id);
-                        }
-                    }
-                }, 3000);
-
-                // 5. 5-minute countdown
-                setTimeLeft(300);
-                countdownInterval.current = setInterval(() => {
-                    setTimeLeft(prev => {
-                        if (prev <= 1) {
-                            clearInterval(countdownInterval.current);
-                            clearInterval(heartbeatInterval.current);
-                            clearInterval(matchInterval.current);
-                            if (mounted) {
-                                setTimeoutMessage("No one's around right now. Try again later.");
-                                setTimeout(() => {
-                                    if (mounted) {
-                                        setState('idle');
-                                        setTimeoutMessage('');
-                                    }
-                                }, 3000);
-                            }
-                            return 0;
-                        }
-                        return prev - 1;
-                    });
-                }, 1000);
             } catch (error) {
                 console.error('Error entering lobby:', error);
             }
