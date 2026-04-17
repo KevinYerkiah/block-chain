@@ -12,8 +12,9 @@ export default function ActionBar({
     contentHash,
     blockchainTxHash,
     decryptedContent,
+    onCommentClick,
+    commentCount,
 }) {
-    const [commentCount, setCommentCount] = useState(0);
     const [voteCount, setVoteCount] = useState(0);
     const [userVote, setUserVote] = useState(null); // 'up' | 'down' | null
     const [verifyStatus, setVerifyStatus] = useState(null); // 'verified' | 'failed' | 'pending'
@@ -24,13 +25,6 @@ export default function ActionBar({
     }, [confessionId, currentUserId]);
 
     const fetchCounts = async () => {
-        // Comment count
-        const { count: comments } = await supabase
-            .from('comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('confession_id', confessionId);
-        setCommentCount(comments || 0);
-
         // Vote count
         const { data: votes } = await supabase
             .from('votes')
@@ -121,6 +115,7 @@ export default function ActionBar({
                 icon={<CommentIcon size={18} />}
                 label="Comment"
                 count={commentCount}
+                onClick={onCommentClick}
             />
 
             <div className={styles.voteGroup}>

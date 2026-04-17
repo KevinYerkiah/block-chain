@@ -17,6 +17,7 @@ export default function HomePage() {
 
     const fetchConfessions = async (offset = 0) => {
         setLoading(true);
+
         const { data, error } = await supabase
             .from('confessions')
             .select('*, users(display_name, username)')
@@ -25,19 +26,48 @@ export default function HomePage() {
             .range(offset, offset + 49);
 
         if (!error && data) {
-            if (offset === 0) {
-                setConfessions(data);
-            } else {
-                setConfessions((prev) => [...prev, ...data]);
+            const confessionIds = data.map((c) => c.id);
+
+            let commentCountsMap = {};
+
+            if (confessionIds.length > 0) {
+                const { data: commentsData, error: commentsError } = await supabase
+                    .from('comments')
+                    .select('confession_id')
+                    .in('confession_id', confessionIds);
+
+                if (!commentsError && commentsData) {
+                    commentCountsMap = commentsData.reduce((acc, comment) => {
+                        acc[comment.confession_id] = (acc[comment.confession_id] || 0) + 1;
+                        return acc;
+                    }, {});
+                }
             }
+
+            const confessionsWithCounts = data.map((confession) => ({
+                ...confession,
+                comments_count: commentCountsMap[confession.id] || 0,
+            }));
+
+            if (offset === 0) {
+                setConfessions(confessionsWithCounts);
+            } else {
+                setConfessions((prev) => [...prev, ...confessionsWithCounts]);
+            }
+
             setHasMore(data.length === 50);
         }
+
         setLoading(false);
     };
 
     const handlePosted = (newConfession) => {
         // Add the new confession to the top of the feed immediately
-        setConfessions((prev) => [newConfession, ...prev]);
+        setConfessions((prev) => [{
+             ...newConfession,
+             comments_count: 0 },
+              ...prev
+            ]);
     };
 
     const handleLoadMore = () => {
