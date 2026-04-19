@@ -56,16 +56,17 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
 
   if (!isOpen) return null;
 
-  // Tree-like branching layout algorithm
+  // Tree-like branching layout algorithm with collision detection
   function calculateNodePositions() {
     if (records.length === 0) return [];
     
     const positions = [];
-    const LEVEL_HEIGHT = 120;
-    const BASE_H_SPACING = 100;
-    const BRANCH_ANGLE = 0.6; // radians for branch spread
+    const NODE_RADIUS = 14;
+    const MIN_H_SPACING = 120; // Minimum horizontal spacing
+    const LEVEL_HEIGHT = 140;  // Vertical spacing between levels
+    const MIN_NODE_DISTANCE = 50; // Minimum distance between any two nodes
     
-    // Calculate tree structure - nodes branch out as they grow
+    // Calculate tree structure with dynamic spacing
     records.forEach((record, i) => {
       let x, y;
       
@@ -86,15 +87,48 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
         // Determine if left or right child
         const isLeftChild = i % 2 === 1;
         
-        // Calculate horizontal spread that decreases with depth
-        const spreadFactor = Math.max(0.3, 1 - level * 0.15);
-        const horizontalOffset = BASE_H_SPACING * spreadFactor;
+        // Calculate horizontal spread that adapts to tree depth
+        // Wider spacing at top, gradually decreases but never too narrow
+        const spreadFactor = Math.max(0.4, 1 - level * 0.12);
+        let horizontalOffset = MIN_H_SPACING * spreadFactor;
+        
+        // For deeper levels, increase spacing to prevent overlap
+        if (level > 3) {
+          horizontalOffset *= (1 + (level - 3) * 0.15);
+        }
         
         x = parentPos.x + (isLeftChild ? -horizontalOffset : horizontalOffset);
         y = 80 + level * LEVEL_HEIGHT;
         
-        // Add slight wave variation for organic feel
-        x += Math.sin(i * 0.5) * 15;
+        // Collision detection and adjustment
+        let attempts = 0;
+        let collisionDetected = true;
+        
+        while (collisionDetected && attempts < 10) {
+          collisionDetected = false;
+          
+          // Check distance to all existing nodes
+          for (const existingPos of positions) {
+            const distance = Math.sqrt(
+              Math.pow(x - existingPos.x, 2) + 
+              Math.pow(y - existingPos.y, 2)
+            );
+            
+            if (distance < MIN_NODE_DISTANCE) {
+              collisionDetected = true;
+              // Push node away from collision
+              const angle = Math.atan2(y - existingPos.y, x - existingPos.x);
+              x += Math.cos(angle) * 10;
+              y += Math.sin(angle) * 5;
+              break;
+            }
+          }
+          
+          attempts++;
+        }
+        
+        // Add slight wave variation for organic feel (reduced to avoid overlap)
+        x += Math.sin(i * 0.3) * 8;
       }
       
       positions.push({ x, y, record, index: i });
@@ -105,8 +139,8 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
 
   const nodePositions = calculateNodePositions();
   
-  // Calculate viewBox to fit all nodes
-  const padding = 100;
+  // Calculate viewBox to fit all nodes with padding
+  const padding = 120;
   const minX = Math.min(...nodePositions.map(p => p.x), 0) - padding;
   const maxX = Math.max(...nodePositions.map(p => p.x), 800) + padding;
   const minY = 0;

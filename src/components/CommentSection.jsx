@@ -46,7 +46,7 @@ export default function CommentSection({ confessionId, currentUserId, onCommentA
 
             const contentHash = await hashContent(cleanText);
 
-            const { error } = await supabase
+            const { data, error: insertError } = await supabase
                 .from('comments')
                 .insert({
                     confession_id: confessionId,
@@ -55,8 +55,8 @@ export default function CommentSection({ confessionId, currentUserId, onCommentA
                     content_hash: contentHash,
                 });
 
-            if (error) {
-                throw error;
+            if (insertError) {
+                throw insertError;
             }
 
             setText('');
@@ -71,6 +71,13 @@ export default function CommentSection({ confessionId, currentUserId, onCommentA
             setError(err.message || 'Failed to post comment.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            handleSubmit();
         }
     };
 
@@ -101,9 +108,10 @@ export default function CommentSection({ confessionId, currentUserId, onCommentA
 
             <div className={styles.form}>
                 <Textarea
-                    placeholder="Write a comment..."
+                    placeholder="Write a comment... (Ctrl+Enter to submit)"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     rows={2}
                     autoGrow
                     maxLength={500}
@@ -111,7 +119,12 @@ export default function CommentSection({ confessionId, currentUserId, onCommentA
                 />
                 {error && <p className={styles.error}>{error}</p>}
                 <div className={styles.actions}>
-                    <Button onClick={handleSubmit} loading={loading}>
+                    <Button 
+                        onClick={handleSubmit} 
+                        loading={loading}
+                        disabled={!text.trim() || loading}
+                        type="button"
+                    >
                         Comment
                     </Button>
                 </div>
