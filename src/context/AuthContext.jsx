@@ -17,7 +17,6 @@ export function AuthProvider({ children }) {
     }
 
     useEffect(() => {
-        // Get the initial session on mount
         supabase.auth.getSession().then(async ({ data: { session } }) => {
             if (session?.user) {
                 const profile = await fetchUserProfile(session.user.id);
@@ -26,7 +25,6 @@ export function AuthProvider({ children }) {
             setLoading(false);
         });
 
-        // Listen for auth state changes (login, logout, token refresh)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 if (session?.user) {
@@ -44,13 +42,26 @@ export function AuthProvider({ children }) {
     async function signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
+        await supabase.auth.signOut();
+
+        const { error: otpError } = await supabase.auth.signInWithOtp({ email });
+        if (otpError) throw otpError;
+    }
+
+    async function verifyOtp(email, token) {
+        const { error } = await supabase.auth.verifyOtp({
+            email,
+            token,
+            type: 'email',
+        });
+        if (error) throw error;
     }
 
     async function signUp(email, password, username, displayName) {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
 
-        // Insert the public user profile row
         const { error: insertError } = await supabase.from('users').insert({
             id: data.user.id,
             username,
@@ -67,7 +78,6 @@ export function AuthProvider({ children }) {
         setUser(null);
     }
 
-    // Refresh local user profile (e.g. after bio edit)
     async function refreshUser() {
         if (!user?.id) return;
         const profile = await fetchUserProfile(user.id);
@@ -75,7 +85,7 @@ export function AuthProvider({ children }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, signIn, verifyOtp, signUp, signOut, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
