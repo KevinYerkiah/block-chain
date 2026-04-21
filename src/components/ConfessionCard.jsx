@@ -4,6 +4,7 @@ import Avatar from './ui/Avatar.jsx';
 import ActionBar from './ActionBar.jsx';
 import BlockchainTimer from './ui/BlockchainTimer.jsx';
 import CommentSection from './CommentSection.jsx';
+import { CONTENT_WARNING_TAGS } from './ComposeBox.jsx';
 import styles from './ConfessionCard.module.css';
 
 function formatRelativeTime(timestamp) {
@@ -23,8 +24,18 @@ export default function ConfessionCard({ confession, currentUserId, onOpenBlockc
     const [localCommentCount, setLocalCommentCount] = useState(
         confession.comments_count || 0
     );
+    // Content warning blur state — blurred by default if a tag is set
+    const [revealed, setRevealed] = useState(false);
+
     // Decrypt content (currently just returns as-is since encryption is stubbed)
     const content = confession.encrypted_content || confession.content;
+
+    // Resolve the tag metadata (if any)
+    const warningTag = confession.content_warning
+        ? CONTENT_WARNING_TAGS.find(t => t.id === confession.content_warning)
+        : null;
+
+    const isBlurred = warningTag && !revealed;
 
     const handleAvatarClick = () => {
         if (confession.users?.username) {
@@ -53,8 +64,52 @@ export default function ConfessionCard({ confession, currentUserId, onOpenBlockc
                     </span>
                     <span className={styles.separator}>·</span>
                     <span className={styles.time}>{formatRelativeTime(confession.created_at)}</span>
+
+                    {/* Content warning badge shown in the header */}
+                    {warningTag && (
+                        <span
+                            className={styles.cwBadge}
+                            style={{ background: warningTag.color + '1a', color: warningTag.color, borderColor: warningTag.color + '44' }}
+                        >
+                            {warningTag.emoji} {warningTag.label}
+                        </span>
+                    )}
                 </div>
-                <p className={styles.body}>{content}</p>
+
+                {/* Blurred content wrapper */}
+                <div className={`${styles.bodyWrapper} ${isBlurred ? styles.blurred : ''}`}>
+                    <p className={styles.body}>{content}</p>
+
+                    {/* Overlay with "Show anyway" toggle — only visible when blurred */}
+                    {isBlurred && (
+                        <div className={styles.blurOverlay}>
+                            <div className={styles.blurInfo}>
+                                <span className={styles.blurIcon}>{warningTag.emoji}</span>
+                                <span className={styles.blurLabel}>
+                                    Content Warning: <strong>{warningTag.label}</strong>
+                                </span>
+                            </div>
+                            <button
+                                className={styles.revealBtn}
+                                onClick={() => setRevealed(true)}
+                                style={{ borderColor: warningTag.color, color: warningTag.color }}
+                            >
+                                Show anyway
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Re-hide option once revealed */}
+                {warningTag && revealed && (
+                    <button
+                        className={styles.hideAgainBtn}
+                        onClick={() => setRevealed(false)}
+                    >
+                        🙈 Hide content
+                    </button>
+                )}
+
                 <div className={styles.timerWrapper}>
                     <BlockchainTimer 
                         uploadAt={confession.edit_window_expires_at} 

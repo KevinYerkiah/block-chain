@@ -9,6 +9,16 @@ import Textarea from './ui/Textarea.jsx';
 import Button from './ui/Button.jsx';
 import styles from './ComposeBox.module.css';
 
+// ─── Content Warning Tag definitions ────────────────────────────────────────
+export const CONTENT_WARNING_TAGS = [
+    { id: 'mental-health', label: 'Mental Health', emoji: '🧠', color: '#6366f1' },
+    { id: 'violence',      label: 'Violence',      emoji: '⚠️',  color: '#ef4444' },
+    { id: 'politics',      label: 'Politics',      emoji: '🗳️',  color: '#f59e0b' },
+    { id: 'relationships', label: 'Relationships', emoji: '💔',  color: '#ec4899' },
+    { id: 'substance',     label: 'Substance Use', emoji: '🚬',  color: '#8b5cf6' },
+    { id: 'nsfw',          label: 'NSFW',          emoji: '🔞',  color: '#dc2626' },
+];
+
 export default function ComposeBox({ onPosted }) {
     const { user } = useAuth();
     const [text, setText] = useState('');
@@ -18,6 +28,9 @@ export default function ComposeBox({ onPosted }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    // Content warning state
+    const [selectedTag, setSelectedTag] = useState(null);
+    const [showTagPicker, setShowTagPicker] = useState(false);
 
     const handlePost = async () => {
         if (!text.trim()) return;
@@ -55,6 +68,8 @@ export default function ComposeBox({ onPosted }) {
                     opt_in_blockchain: optInBlockchain,
                     edit_window_expires_at: editWindowExpiresAt,
                     is_on_chain: false,
+                    // Store the selected content warning tag (null if none chosen)
+                    content_warning: selectedTag || null,
                 })
                 .select('*, users(display_name, username, avatar_index)')
                 .single();
@@ -69,6 +84,8 @@ export default function ComposeBox({ onPosted }) {
             
             setText('');
             setOptInBlockchain(false);
+            setSelectedTag(null);
+            setShowTagPicker(false);
             setIsExpanded(false);
             setIsFocused(false);
             if (onPosted) onPosted(data);
@@ -90,6 +107,13 @@ export default function ComposeBox({ onPosted }) {
             setIsFocused(false);
         }
     };
+
+    const handleTagSelect = (tagId) => {
+        setSelectedTag(prev => prev === tagId ? null : tagId);
+        setShowTagPicker(false);
+    };
+
+    const activeTag = CONTENT_WARNING_TAGS.find(t => t.id === selectedTag);
 
     return (
         <div className={styles.wrapper}>
@@ -115,6 +139,53 @@ export default function ComposeBox({ onPosted }) {
                         disabled={loading}
                         className={styles.textarea}
                     />
+
+                    {/* Content Warning Tag picker — only shown when expanded */}
+                    {isExpanded && (
+                        <div className={styles.tagSection}>
+                            <button
+                                type="button"
+                                className={`${styles.tagTrigger} ${activeTag ? styles.tagActive : ''}`}
+                                style={activeTag ? { borderColor: activeTag.color, color: activeTag.color } : {}}
+                                onClick={() => setShowTagPicker(prev => !prev)}
+                                disabled={loading}
+                            >
+                                {activeTag
+                                    ? <>{activeTag.emoji} {activeTag.label}</>
+                                    : <>🏷️ Add Content Warning</>
+                                }
+                            </button>
+
+                            {showTagPicker && (
+                                <div className={styles.tagPicker}>
+                                    <p className={styles.tagPickerHint}>Select a sensitivity label (optional)</p>
+                                    <div className={styles.tagGrid}>
+                                        {CONTENT_WARNING_TAGS.map(tag => (
+                                            <button
+                                                key={tag.id}
+                                                type="button"
+                                                className={`${styles.tagChip} ${selectedTag === tag.id ? styles.tagChipSelected : ''}`}
+                                                style={selectedTag === tag.id ? { background: tag.color + '22', borderColor: tag.color, color: tag.color } : {}}
+                                                onClick={() => handleTagSelect(tag.id)}
+                                            >
+                                                <span>{tag.emoji}</span>
+                                                <span>{tag.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {selectedTag && (
+                                        <button
+                                            type="button"
+                                            className={styles.tagClear}
+                                            onClick={() => { setSelectedTag(null); setShowTagPicker(false); }}
+                                        >
+                                            ✕ Remove warning
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className={styles.controls}>
                         <label className={styles.blockchainToggle}>
@@ -146,6 +217,8 @@ export default function ComposeBox({ onPosted }) {
                                     onClick={() => {
                                         setText('');
                                         setOptInBlockchain(false);
+                                        setSelectedTag(null);
+                                        setShowTagPicker(false);
                                         setIsExpanded(false);
                                         setIsFocused(false);
                                     }}
