@@ -59,22 +59,30 @@ export default function ComposeBox({ onPosted }) {
                 ? new Date(Date.now() + 2 * 60 * 1000).toISOString()
                 : null;
             
+            const confessionData = {
+                user_id: user.id,
+                encrypted_content: encrypted,
+                content_hash: contentHash,
+                opt_in_blockchain: optInBlockchain || false,
+                is_on_chain: false,
+                content_warning: selectedTag || null,
+            };
+
+            // Only add edit_window_expires_at if blockchain is enabled
+            if (optInBlockchain) {
+                confessionData.edit_window_expires_at = editWindowExpiresAt;
+            }
+            
             const { data, error: insertError } = await supabase
                 .from('confessions')
-                .insert({
-                    user_id: user.id,
-                    encrypted_content: encrypted,
-                    content_hash: contentHash,
-                    opt_in_blockchain: optInBlockchain,
-                    edit_window_expires_at: editWindowExpiresAt,
-                    is_on_chain: false,
-                    // Store the selected content warning tag (null if none chosen)
-                    content_warning: selectedTag || null,
-                })
+                .insert(confessionData)
                 .select('*, users(display_name, username, avatar_index)')
                 .single();
 
-            if (insertError) throw insertError;
+            if (insertError) {
+                console.error('Insert error:', insertError);
+                throw insertError;
+            }
 
             recordPost(user.id);
             

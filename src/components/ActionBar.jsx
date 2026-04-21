@@ -86,8 +86,8 @@ export default function ActionBar({
     };
 
     const handleVerify = async () => {
-        // If already on blockchain and verified, clicking shield opens blockchain graph
-        if (isOnChain && verifyStatus === 'verified' && onShieldClick) {
+        // If on blockchain, clicking shield opens blockchain graph immediately
+        if (isOnChain && onShieldClick) {
             onShieldClick(confessionId);
             return;
         }
@@ -111,6 +111,10 @@ export default function ActionBar({
             } else if (result.verified) {
                 // Hash matches blockchain record
                 setVerifyStatus('verified');
+                // Open blockchain graph on successful verification
+                if (onShieldClick) {
+                    onShieldClick(confessionId);
+                }
             } else {
                 // Hash mismatch — content has been tampered with
                 setVerifyStatus('failed');
