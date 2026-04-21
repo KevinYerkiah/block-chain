@@ -58,6 +58,16 @@ export function AuthProvider({ children }) {
     async function signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        // User is now signed in - no OTP needed
+    }
+
+    async function verifyOtp(email, token) {
+        const { error } = await supabase.auth.verifyOtp({
+            email,
+            token,
+            type: 'email',
+        });
+        if (error) throw error;
     }
 
     async function signUp(email, password, username, displayName) {
@@ -105,7 +115,7 @@ export function AuthProvider({ children }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, signIn, verifyOtp, signUp, signOut, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
