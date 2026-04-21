@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase.js';
 import { verifyIntegrity, verifyBlockchainIntegrity } from '../security/hashIntegrity.js';
+import { verifyConfessionOnChain } from '../security/blockchainService.js';
 import IconButton from './ui/IconButton.jsx';
 import { CommentIcon, UpvoteIcon, DownvoteIcon, ShieldIcon } from './ui/icons.jsx';
 import styles from './ActionBar.module.css';
@@ -12,8 +13,10 @@ export default function ActionBar({
     contentHash,
     blockchainTxHash,
     decryptedContent,
+    onCommentClick,
+    commentCount,
+    onShieldClick,
 }) {
-    const [commentCount, setCommentCount] = useState(0);
     const [voteCount, setVoteCount] = useState(0);
     const [userVote, setUserVote] = useState(null); // 'up' | 'down' | null
     const [verifyStatus, setVerifyStatus] = useState(null); // 'verified' | 'failed' | 'pending'
@@ -24,13 +27,6 @@ export default function ActionBar({
     }, [confessionId, currentUserId]);
 
     const fetchCounts = async () => {
-        // Comment count
-        const { count: comments } = await supabase
-            .from('comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('confession_id', confessionId);
-        setCommentCount(comments || 0);
-
         // Vote count
         const { data: votes } = await supabase
             .from('votes')
@@ -90,6 +86,12 @@ export default function ActionBar({
     };
 
     const handleVerify = async () => {
+        // If already on blockchain and verified, clicking shield opens blockchain graph
+        if (isOnChain && verifyStatus === 'verified' && onShieldClick) {
+            onShieldClick(confessionId);
+            return;
+        }
+
         setVerifyStatus('pending');
 
         try {
@@ -100,12 +102,18 @@ export default function ActionBar({
                 return;
             }
 
-            // If on chain, verify blockchain
-            if (isOnChain && blockchainTxHash) {
-                const { verified } = await verifyBlockchainIntegrity(blockchainTxHash, decryptedContent);
-                setVerifyStatus(verified === null ? 'pending' : verified ? 'verified' : 'failed');
-            } else {
+            // Verify against blockchain
+            const result = await verifyConfessionOnChain(confessionId, contentHash);
+
+            if (!result.onChain) {
+                // Not yet on blockchain — still within edit window or not opted in
+                setVerifyStatus('pending');
+            } else if (result.verified) {
+                // Hash matches blockchain record
                 setVerifyStatus('verified');
+            } else {
+                // Hash mismatch — content has been tampered with
+                setVerifyStatus('failed');
             }
         } catch {
             setVerifyStatus('failed');
@@ -113,7 +121,15 @@ export default function ActionBar({
     };
 
     const voteColor = voteCount > 0 ? 'var(--success)' : voteCount < 0 ? 'var(--danger)' : 'var(--text-secondary)';
-    const shieldColor = verifyStatus === 'verified' ? 'var(--success)' : verifyStatus === 'failed' ? 'var(--danger)' : verifyStatus === 'pending' ? 'var(--warning)' : 'var(--text-secondary)';
+    const shieldColor = isOnChain 
+        ? 'var(--success)' 
+        : verifyStatus === 'verified' 
+            ? 'var(--success)' 
+            : verifyStatus === 'failed' 
+                ? 'var(--danger)' 
+                : verifyStatus === 'pending' 
+                    ? 'var(--warning)' 
+                    : 'var(--text-secondary)';
 
     return (
         <div className={styles.actionBar}>
@@ -121,6 +137,7 @@ export default function ActionBar({
                 icon={<CommentIcon size={18} />}
                 label="Comment"
                 count={commentCount}
+                onClick={onCommentClick}
             />
 
             <div className={styles.voteGroup}>

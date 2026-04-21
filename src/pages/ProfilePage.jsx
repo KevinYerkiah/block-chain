@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../config/supabase.js';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import ProfileHeader from '../components/ProfileHeader.jsx';
+import EditProfileModal from '../components/EditProfileModal.jsx';
 import ConfessionCard from '../components/ConfessionCard.jsx';
 import TemporalConfessionCard from '../components/TemporalConfessionCard.jsx';
 import Loader from '../components/ui/Loader.jsx';
@@ -11,11 +12,12 @@ import styles from './ProfilePage.module.css';
 
 export default function ProfilePage() {
     const { username } = useParams();
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, refreshUser } = useAuth();
     const [profileUser, setProfileUser] = useState(null);
     const [confessions, setConfessions] = useState([]);
     const [temporalMode, setTemporalMode] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [editModalOpen, setEditModalOpen] = useState(false);
 
     const isOwnProfile = currentUser?.username === username;
 
@@ -41,25 +43,52 @@ export default function ProfilePage() {
         setLoading(false);
     };
 
+    const handleProfileSaved = async () => {
+        // Refresh the profile data
+        await fetchProfile();
+        // If it's own profile, refresh the auth context too
+        if (isOwnProfile) {
+            await refreshUser();
+        }
+    };
+
     const fetchConfessions = async () => {
         if (temporalMode) {
-            // Fetch all confessions including deleted
             const { data: allConfessions } = await supabase
                 .from('confessions')
-                .select('*, users(display_name, username)')
+                .select('*, users(display_name, username, avatar_index)')
                 .eq('user_id', profileUser.id)
                 .order('created_at', { ascending: false });
+
+            const confessionIds = (allConfessions || []).map((c) => c.id);
 
             // Fetch edit history
             const { data: edits } = await supabase
                 .from('confession_edits')
                 .select('*')
-                .in('confession_id', allConfessions?.map(c => c.id) || []);
+                .in('confession_id', confessionIds);
+
+            let commentCountsMap = {};
+
+            if (confessionIds.length > 0) {
+                const { data: commentsData, error: commentsError } = await supabase
+                    .from('comments')
+                    .select('confession_id')
+                    .in('confession_id', confessionIds);
+
+                if (!commentsError && commentsData) {
+                    commentCountsMap = commentsData.reduce((acc, comment) => {
+                        acc[comment.confession_id] = (acc[comment.confession_id] || 0) + 1;
+                        return acc;
+                    }, {});
+                }
+            }
 
             // Merge edits with confessions
-            const confessionsWithEdits = (allConfessions || []).map(confession => ({
+            const confessionsWithEdits = (allConfessions || []).map((confession) => ({
                 ...confession,
-                originalVersion: edits?.find(e => e.confession_id === confession.id),
+                comments_count: commentCountsMap[confession.id] || 0,
+                originalVersion: edits?.find((e) => e.confession_id === confession.id),
             }));
 
             setConfessions(confessionsWithEdits);
@@ -67,12 +96,35 @@ export default function ProfilePage() {
             // Normal mode: only non-deleted
             const { data } = await supabase
                 .from('confessions')
-                .select('*, users(display_name, username)')
+                .select('*, users(display_name, username, avatar_index)')
                 .eq('user_id', profileUser.id)
                 .eq('is_deleted', false)
                 .order('created_at', { ascending: false });
 
-            setConfessions(data || []);
+            const confessionIds = (data || []).map((c) => c.id);
+
+            let commentCountsMap = {};
+
+            if (confessionIds.length > 0) {
+                const { data: commentsData, error: commentsError } = await supabase
+                    .from('comments')
+                    .select('confession_id')
+                    .in('confession_id', confessionIds);
+
+                if (!commentsError && commentsData) {
+                    commentCountsMap = commentsData.reduce((acc, comment) => {
+                        acc[comment.confession_id] = (acc[comment.confession_id] || 0) + 1;
+                        return acc;
+                    }, {});
+                }
+            }
+
+            const confessionsWithCounts = (data || []).map((confession) => ({
+                ...confession,
+                comments_count: commentCountsMap[confession.id] || 0,
+            }));
+
+            setConfessions(confessionsWithCounts);
         }
     };
 
@@ -100,7 +152,16 @@ export default function ProfilePage() {
                 isOwnProfile={isOwnProfile}
                 temporalMode={temporalMode}
                 onToggleTemporal={() => setTemporalMode(!temporalMode)}
+                onEditProfile={() => setEditModalOpen(true)}
             />
+            {isOwnProfile && (
+                <EditProfileModal
+                    isOpen={editModalOpen}
+                    onClose={() => setEditModalOpen(false)}
+                    user={profileUser}
+                    onSave={handleProfileSaved}
+                />
+            )}
             <div className={styles.confessions}>
                 {confessions.length === 0 ? (
                     <div className={styles.empty}>

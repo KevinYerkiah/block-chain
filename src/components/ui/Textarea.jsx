@@ -7,19 +7,23 @@ import styles from './Textarea.module.css';
  *   placeholder — string
  *   value       — controlled value
  *   onChange    — handler
+ *   onKeyDown   — handler
  *   maxLength   — number
  *   rows        — number (default: 3)
  *   autoGrow    — bool (auto-expands height with content)
  *   disabled    — bool
+ *   className   — string
  */
 export default function Textarea({
     placeholder,
     value,
     onChange,
+    onKeyDown,
     maxLength,
     rows = 3,
     autoGrow = false,
     disabled = false,
+    className = '',
 }) {
     const textareaRef = useRef(null);
 
@@ -33,10 +37,11 @@ export default function Textarea({
     return (
         <textarea
             ref={textareaRef}
-            className={styles.textarea}
+            className={`${styles.textarea} ${className}`}
             placeholder={placeholder}
             value={value}
             onChange={onChange}
+            onKeyDown={onKeyDown}
             maxLength={maxLength}
             rows={rows}
             disabled={disabled}

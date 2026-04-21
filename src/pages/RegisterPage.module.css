@@ -1,58 +1,258 @@
 .page {
     display: flex;
-    align-items: center;
-    justify-content: center;
     min-height: 100vh;
-    background: var(--surface);
+    background: var(--background);
 }
 
-.card {
-    width: 400px;
+.leftPanel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 40px;
     background: var(--background);
-    border-radius: 16px;
-    box-shadow: var(--shadow);
+}
+
+.content {
+    width: 100%;
+    max-width: 440px;
+    animation: slideInLeft 0.6s ease-out;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.header {
+    margin-bottom: 48px;
 }
 
 .logo {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--primary);
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+}
+
+.tagline {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 4px 24px rgba(28, 25, 23, 0.06);
+}
+
+.title {
     font-size: 28px;
     font-weight: 700;
-    color: var(--primary);
-    text-align: center;
-    margin-bottom: 8px;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
 }
 
 .subtitle {
     font-size: 15px;
     color: var(--text-secondary);
-    text-align: center;
-    margin-bottom: 24px;
+    margin: 0 0 32px 0;
 }
 
 .form {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
 }
 
 .error {
     font-size: 13px;
     color: var(--danger);
-    text-align: center;
+    padding: 12px;
+    background: var(--danger-faint);
+    border-radius: 8px;
+    border-left: 3px solid var(--danger);
+    margin: 0;
 }
 
-.login {
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 24px 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.secondaryButton {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
     font-size: 15px;
-    color: var(--text-secondary);
-    text-align: center;
-    margin-top: 16px;
-}
-
-.login a {
-    color: var(--primary);
     font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
 }
 
-.login a:hover {
-    text-decoration: underline;
+.secondaryButton:hover {
+    border-color: var(--primary);
+    background: var(--primary-faint);
+    color: var(--primary);
+}
+
+.footer {
+    margin-top: 32px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* Right Panel */
+.rightPanel {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .rightPanel {
+        display: block;
+    }
+}
+
+.coverImage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+.coverImage.active {
+    opacity: 1;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(232, 96, 28, 0.9) 0%, rgba(212, 82, 15, 0.85) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+}
+
+.overlayContent {
+    max-width: 500px;
+    color: white;
+    animation: fadeInUp 0.8s ease-out 0.3s both;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.overlayTitle {
+    font-size: 48px;
+    font-weight: 800;
+    margin: 0 0 20px 0;
+    line-height: 1.2;
+}
+
+.overlayText {
+    font-size: 18px;
+    line-height: 1.6;
+    margin: 0 0 40px 0;
+    opacity: 0.95;
+}
+
+.features {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.featureIcon {
+    font-size: 24px;
+}
+
+.coverIndicators {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.indicator:hover {
+    background: rgba(255, 255, 255, 0.8);
+    transform: scale(1.2);
+}
+
+.indicator.activeIndicator {
+    width: 24px;
+    border-radius: 4px;
+    background: white;
 }

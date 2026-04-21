@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Build outputs
 dist/
@@ -49,6 +48,8 @@ QUICK_START.md
 UPDATES.md
 TIMER_GUIDE.md
 RATE_LIMIT_FIX.md
+CHAT_FEATURE.md
+CHAT_IMPLEMENTATION_STEP2.md
 
 # Temporary files
 *.tmp
@@ -62,3 +63,6 @@ coverage/
 # Misc
 *.bak
 *.orig
+
+node_modules/
+

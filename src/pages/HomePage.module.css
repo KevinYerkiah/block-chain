@@ -1,0 +1,225 @@
+.container {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.welcomeBanner {
+  padding: 24px 16px;
+  background: linear-gradient(135deg, var(--primary-faint) 0%, var(--surface) 100%);
+  border-bottom: 1px solid var(--border-light);
+  animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.welcomeContent {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.welcomeTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.welcomeEmoji {
+  font-size: 24px;
+  animation: wave 2s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30% { transform: rotate(14deg); }
+  20% { transform: rotate(-8deg); }
+  40% { transform: rotate(0deg); }
+}
+
+.welcomeText {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.statsBar {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.composeWrapper {
+  position: relative;
+  animation: slideUp 0.5s ease-out 0.1s both;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feedWrapper {
+  animation: slideUp 0.5s ease-out 0.2s both;
+}
+
+.emptyState {
+  padding: 60px 20px;
+  text-align: center;
+  animation: fadeIn 0.6s ease-out;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.emptyText {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+
+.loadingShimmer {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.shimmerCard {
+  display: flex;
+  gap: 12px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.shimmerAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.shimmerContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shimmerLine {
+  height: 12px;
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.shimmerLineShort {
+  width: 60%;
+}
+
+.shimmerLineMedium {
+  width: 80%;
+}
+
+.scrollToTop {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 100;
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+
+.scrollToTop.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.scrollToTop:hover {
+  background: var(--primary-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(232, 96, 28, 0.3);
+}
+
+.scrollToTop:active {
+  transform: translateY(-2px);
+}

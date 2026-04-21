@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import Avatar from './ui/Avatar.jsx';
 import ActionBar from './ActionBar.jsx';
 import BlockchainTimer from './ui/BlockchainTimer.jsx';
+import CommentSection from './CommentSection.jsx';
 import styles from './ConfessionCard.module.css';
 
 function formatRelativeTime(timestamp) {
@@ -14,13 +16,17 @@ function formatRelativeTime(timestamp) {
     return `${Math.floor(diff / 86400)}d`;
 }
 
-export default function ConfessionCard({ confession, currentUserId }) {
+export default function ConfessionCard({ confession, currentUserId, onOpenBlockchain }) {
+    const [showComments, setShowComments] = useState(false);
+    const [localCommentCount, setLocalCommentCount] = useState(
+        confession.comments_count || 0
+    );
     // Decrypt content (currently just returns as-is since encryption is stubbed)
     const content = confession.encrypted_content || confession.content;
     
     return (
         <article className={styles.card}>
-            <Avatar size="md" />
+            <Avatar size="md" avatarIndex={confession.users?.avatar_index} />
             <div className={styles.content}>
                 <div className={styles.header}>
                     <span className={styles.displayName}>{confession.users?.display_name}</span>
@@ -37,13 +43,26 @@ export default function ConfessionCard({ confession, currentUserId }) {
                 </div>
                 <ActionBar
                     confessionId={confession.id}
+                    commentCount={localCommentCount}
                     currentUserId={currentUserId}
                     isOnChain={confession.is_on_chain}
                     contentHash={confession.content_hash}
                     blockchainTxHash={confession.blockchain_tx_hash}
                     decryptedContent={content}
+                    onCommentClick={() => setShowComments(prev => !prev)}
+                    onShieldClick={onOpenBlockchain}
                 />
+                {showComments && (
+                    <CommentSection
+                        confessionId={confession.id}
+                        currentUserId={currentUserId}
+                        onCommentAdded={() => 
+                            setLocalCommentCount((prev) => prev + 1)
+                        }
+                    />
+                )}
             </div>
+
         </article>
     );
 }
