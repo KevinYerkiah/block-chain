@@ -114,6 +114,7 @@ export default function HomePage() {
             .from('confessions')
             .select('*, users(display_name, username, avatar_index)')
             .eq('is_deleted', false)
+            .eq('is_hidden', false)
             .order('created_at', { ascending: false })
             .range(offset, offset + 49);
 
