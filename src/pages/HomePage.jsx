@@ -64,6 +64,9 @@ export default function HomePage() {
         if (!user?.id) return;
 
         async function processExpiredConfessions() {
+            // Skip if MetaMask is not available
+            if (typeof window.ethereum === 'undefined') return;
+
             // Find confessions that opted into blockchain, haven't been written yet,
             // and whose edit window has passed — AND belong to the current user
             const { data: expired } = await supabase

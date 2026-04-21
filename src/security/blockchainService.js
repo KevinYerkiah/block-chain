@@ -43,7 +43,7 @@ function getReadProvider() {
  */
 async function getWriteContract() {
     if (!window.ethereum) {
-        throw new Error('MetaMask is not installed. Install it from metamask.io to write to blockchain.');
+        return null;
     }
 
     const provider = new ethers.BrowserProvider(window.ethereum);
@@ -75,6 +75,10 @@ function getReadContract() {
 export async function storeConfessionOnChain(confessionId, contentHash) {
     try {
         const contract = await getWriteContract();
+        if (!contract) {
+            return { success: false, error: 'MetaMask not available' };
+        }
+        
         const tx = await contract.storeConfession(
             uuidToBytes32(confessionId),
             hashToBytes32(contentHash)
@@ -82,7 +86,6 @@ export async function storeConfessionOnChain(confessionId, contentHash) {
         const receipt = await tx.wait();
         return { success: true, txHash: receipt.hash };
     } catch (err) {
-        console.error('storeConfessionOnChain error:', err);
         return { success: false, error: err.message };
     }
 }
@@ -100,6 +103,10 @@ export async function storeUserOnChain(userId, username) {
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
         const contract = await getWriteContract();
+        if (!contract) {
+            return { success: false, error: 'MetaMask not available' };
+        }
+        
         const tx = await contract.storeUser(
             uuidToBytes32(userId),
             hashToBytes32(hashHex)
@@ -107,7 +114,6 @@ export async function storeUserOnChain(userId, username) {
         const receipt = await tx.wait();
         return { success: true, txHash: receipt.hash, userHash: hashHex };
     } catch (err) {
-        console.error('storeUserOnChain error:', err);
         return { success: false, error: err.message };
     }
 }

@@ -3,13 +3,25 @@
     top: 0;
     display: flex;
     align-items: center;
-    gap: 16px;
+    justify-content: space-between;
     height: 53px;
     padding: 0 16px;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--border);
     z-index: 10;
+}
+
+.leftSection {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.rightSection {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .backButton {

@@ -95,3 +95,175 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background: var(--danger);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 10px;
+    margin-left: auto;
+}
+
+/* Notifications Full View */
+.notificationsView {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.notificationsViewHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.backButton:hover {
+    background: var(--hover-bg);
+}
+
+.notificationsViewTitle {
+    flex: 1;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.markAllReadButtonCompact {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    transition: background 0.2s ease;
+}
+
+.markAllReadButtonCompact:hover {
+    background: var(--hover-bg);
+}
+
+.notificationsViewList {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.notificationsViewEmpty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 32px;
+    text-align: center;
+    height: 100%;
+}
+
+.emptyIcon {
+    font-size: 64px;
+    opacity: 0.3;
+    margin-bottom: 16px;
+}
+
+.emptyText {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.emptySubtext {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.notificationViewRow {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-light);
+    transition: background 0.2s ease;
+}
+
+.notificationViewRow.unread {
+    background: var(--primary-faint);
+}
+
+.notificationViewRow:hover {
+    background: var(--hover-bg);
+}
+
+.notificationViewIcon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--primary-faint);
+    color: var(--primary);
+}
+
+.notificationViewContent {
+    flex: 1;
+    min-width: 0;
+}
+
+.notificationViewTitle {
+    font-size: 15px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.notificationViewTitle.bold {
+    font-weight: 600;
+}
+
+.notificationViewBody {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
+.notificationViewTime {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.notificationViewActions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.declineButton {
+    color: var(--danger) !important;
+}

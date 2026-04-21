@@ -10,6 +10,15 @@
     background: var(--surface);
 }
 
+.avatarWrapper {
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.avatarWrapper:hover {
+    opacity: 0.8;
+}
+
 .content {
     flex: 1;
     min-width: 0;
@@ -26,9 +35,25 @@
     font-size: 15px;
     font-weight: 700;
     color: var(--text-primary);
+    cursor: pointer;
+    transition: color 0.2s ease;
 }
 
-.username,
+.displayName:hover {
+    color: var(--primary);
+}
+
+.username {
+    font-size: 14px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.username:hover {
+    color: var(--primary);
+}
+
 .separator,
 .time {
     font-size: 14px;
