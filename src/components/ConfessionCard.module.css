@@ -60,6 +60,23 @@
     color: var(--text-secondary);
 }
 
+/* ─── Content Warning Badge (in header) ─────────────────────────────── */
+
+.cwBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: 1px solid;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    margin-left: 4px;
+}
+
+/* ─── Body & Blur overlay ────────────────────────────────────────────── */
+
 .body {
     margin-top: 4px;
     font-size: 15px;
@@ -67,6 +84,83 @@
     color: var(--text-primary);
     white-space: pre-wrap;
     word-wrap: break-word;
+}
+
+.bodyWrapper {
+    position: relative;
+    margin-top: 4px;
+}
+
+/* When blurred: blur the text and prevent interaction */
+.blurred .body {
+    filter: blur(6px);
+    user-select: none;
+    pointer-events: none;
+    /* Ensure minimum height so the overlay has room */
+    min-height: 48px;
+}
+
+/* Semi-transparent overlay centred over the blurred text */
+.blurOverlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(var(--background-rgb, 255 255 255) / 0.55);
+    backdrop-filter: blur(2px);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.blurInfo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.blurIcon {
+    font-size: 18px;
+}
+
+.blurLabel {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.revealBtn {
+    padding: 5px 14px;
+    border: 1.5px solid;
+    border-radius: 20px;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.revealBtn:hover {
+    opacity: 0.75;
+}
+
+/* Small "Hide content" link shown after revealing */
+.hideAgainBtn {
+    display: block;
+    margin-top: 4px;
+    background: none;
+    border: none;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+    transition: color 0.15s ease;
+}
+
+.hideAgainBtn:hover {
+    color: var(--text-secondary);
 }
 
 .timerWrapper {

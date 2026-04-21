@@ -74,6 +74,111 @@
     transition: all 0.3s ease;
 }
 
+/* ─── Content Warning Tag Picker ─────────────────────────────────────── */
+
+.tagSection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeIn 0.25s ease-out;
+}
+
+.tagTrigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--surface);
+    border: 1.5px dashed var(--border);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: fit-content;
+}
+
+.tagTrigger:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-faint);
+}
+
+.tagTrigger.tagActive {
+    border-style: solid;
+    font-weight: 600;
+    background: transparent;
+}
+
+.tagPicker {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeIn 0.2s ease-out;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.tagPickerHint {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.tagGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tagChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    background: var(--background);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tagChip:hover {
+    border-color: var(--text-secondary);
+    background: var(--surface);
+}
+
+.tagChipSelected {
+    font-weight: 600;
+}
+
+.tagClear {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s ease;
+}
+
+.tagClear:hover {
+    color: var(--danger);
+}
+
+/* ─── Controls row ───────────────────────────────────────────────────── */
+
 .controls {
     display: flex;
     align-items: center;
@@ -83,12 +188,8 @@
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
 .blockchainToggle {
@@ -231,24 +332,14 @@
     75% { transform: translateX(6px); }
 }
 
-
 /* Typing indicator glow */
 .composeCard.focused.typing {
     animation: typingGlow 2s ease-in-out infinite;
 }
 
 @keyframes typingGlow {
-    0%, 100% {
-        box-shadow: 0 8px 24px rgba(232, 96, 28, 0.12);
-    }
-    50% {
-        box-shadow: 0 8px 32px rgba(232, 96, 28, 0.18);
-    }
-}
-
-/* Smooth height transition */
-.cardBody {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    0%, 100% { box-shadow: 0 8px 24px rgba(232, 96, 28, 0.12); }
+    50%       { box-shadow: 0 8px 32px rgba(232, 96, 28, 0.18); }
 }
 
 /* Success state after posting */
@@ -259,13 +350,7 @@
 }
 
 @keyframes successPulse {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.02);
-    }
-    100% {
-        transform: scale(1);
-    }
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.02); }
+    100% { transform: scale(1); }
 }
