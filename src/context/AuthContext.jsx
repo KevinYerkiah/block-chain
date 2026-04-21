@@ -15,7 +15,6 @@ export function AuthProvider({ children }) {
             .eq('id', authUserId)
             .single();
         
-        // Backfill avatar_index and cover_color if missing
         if (data && (data.avatar_index == null || data.cover_color == null)) {
             const avatarIndex = data.avatar_index ?? Math.floor(Math.random() * 4) + 1;
             const coverColors = ['#FFDDD2', '#D4E8C2', '#C9E4DE', '#D6D0F0', '#FAE1C3', '#C5D8F0', '#F5C6D0', '#D0EAD0'];
@@ -26,7 +25,6 @@ export function AuthProvider({ children }) {
                 .update({ avatar_index: avatarIndex, cover_color: coverColor })
                 .eq('id', authUserId);
             
-            // Update local data to reflect changes immediately
             data.avatar_index = avatarIndex;
             data.cover_color = coverColor;
         }
@@ -35,7 +33,6 @@ export function AuthProvider({ children }) {
     }
 
     useEffect(() => {
-        // Get the initial session on mount
         supabase.auth.getSession().then(async ({ data: { session } }) => {
             if (session?.user) {
                 const profile = await fetchUserProfile(session.user.id);
@@ -44,7 +41,6 @@ export function AuthProvider({ children }) {
             setLoading(false);
         });
 
-        // Listen for auth state changes (login, logout, token refresh)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 if (session?.user) {
@@ -62,18 +58,30 @@ export function AuthProvider({ children }) {
     async function signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
+        await supabase.auth.signOut();
+
+        const { error: otpError } = await supabase.auth.signInWithOtp({ email });
+        if (otpError) throw otpError;
+    }
+
+    async function verifyOtp(email, token) {
+        const { error } = await supabase.auth.verifyOtp({
+            email,
+            token,
+            type: 'email',
+        });
+        if (error) throw error;
     }
 
     async function signUp(email, password, username, displayName) {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
 
-        // Generate random avatar and cover color
         const avatarIndex = Math.floor(Math.random() * 4) + 1;
         const coverColors = ['#FFDDD2', '#D4E8C2', '#C9E4DE', '#D6D0F0', '#FAE1C3', '#C5D8F0', '#F5C6D0', '#D0EAD0'];
         const coverColor = coverColors[Math.floor(Math.random() * coverColors.length)];
 
-        // Insert the public user profile row
         const { error: insertError } = await supabase.from('users').insert({
             id: data.user.id,
             username,
@@ -86,8 +94,6 @@ export function AuthProvider({ children }) {
         });
         if (insertError) throw insertError;
 
-        // Optionally store user on blockchain
-        // User can reject MetaMask prompt — signup still succeeds
         try {
             const chainResult = await storeUserOnChain(data.user.id, username);
             if (chainResult.success) {
@@ -97,7 +103,6 @@ export function AuthProvider({ children }) {
                     .eq('id', data.user.id);
             }
         } catch (err) {
-            // Gracefully handle MetaMask rejection or errors
             console.warn('Blockchain user storage skipped:', err.message);
         }
     }
@@ -107,7 +112,6 @@ export function AuthProvider({ children }) {
         setUser(null);
     }
 
-    // Refresh local user profile (e.g. after bio edit)
     async function refreshUser() {
         if (!user?.id) return;
         const profile = await fetchUserProfile(user.id);
@@ -115,7 +119,7 @@ export function AuthProvider({ children }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, signIn, verifyOtp, signUp, signOut, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
