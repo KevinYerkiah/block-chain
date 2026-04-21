@@ -64,9 +64,6 @@ export default function HomePage() {
         if (!user?.id) return;
 
         async function processExpiredConfessions() {
-            // Skip if MetaMask is not available
-            if (typeof window.ethereum === 'undefined') return;
-
             // Find confessions that opted into blockchain, haven't been written yet,
             // and whose edit window has passed — AND belong to the current user
             const { data: expired } = await supabase
@@ -76,7 +73,7 @@ export default function HomePage() {
                 .eq('opt_in_blockchain', true)
                 .eq('is_on_chain', false)
                 .lt('edit_window_expires_at', new Date().toISOString())
-                .limit(5);   // process 5 at a time, don't spam MetaMask
+                .limit(5);
 
             if (!expired || expired.length === 0) return;
 

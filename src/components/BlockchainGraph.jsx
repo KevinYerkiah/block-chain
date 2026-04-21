@@ -8,6 +8,7 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [newNodeIds, setNewNodeIds] = useState(new Set());
   const [expandedNode, setExpandedNode] = useState(null);
+  const [zoom, setZoom] = useState(1);
   const svgRef = useRef(null);
 
   useEffect(() => {
@@ -139,27 +140,53 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
 
   const nodePositions = calculateNodePositions();
   
-  // Calculate viewBox to fit all nodes with padding
-  const padding = 120;
+  // Calculate dynamic zoom based on number of nodes
+  useEffect(() => {
+    const nodeCount = records.length;
+    let newZoom = 1;
+    
+    if (nodeCount <= 3) {
+      newZoom = 1;
+    } else if (nodeCount <= 7) {
+      newZoom = 0.9;
+    } else if (nodeCount <= 15) {
+      newZoom = 0.75;
+    } else if (nodeCount <= 31) {
+      newZoom = 0.6;
+    } else if (nodeCount <= 63) {
+      newZoom = 0.5;
+    } else {
+      newZoom = 0.4;
+    }
+    
+    setZoom(newZoom);
+  }, [records.length]);
+  
+  // Calculate viewBox to fit all nodes with padding, adjusted by zoom
+  const padding = 120 / zoom;
   const minX = Math.min(...nodePositions.map(p => p.x), 0) - padding;
   const maxX = Math.max(...nodePositions.map(p => p.x), 800) + padding;
   const minY = 0;
   const maxY = Math.max(...nodePositions.map(p => p.y), 400) + padding;
-  const viewBoxWidth = maxX - minX;
-  const viewBoxHeight = maxY - minY;
+  const viewBoxWidth = (maxX - minX) / zoom;
+  const viewBoxHeight = (maxY - minY) / zoom;
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const adjustedMinX = centerX - viewBoxWidth / 2;
+  const adjustedMinY = centerY - viewBoxHeight / 2;
 
   function handleNodeMouseEnter(record, index, event) {
     const svgRect = svgRef.current.getBoundingClientRect();
     const nodePos = nodePositions.find(p => p.index === index);
     if (!nodePos) return;
     
-    // Convert SVG coordinates to screen coordinates
+    // Convert SVG coordinates to screen coordinates with zoom adjustment
     const scaleX = svgRect.width / viewBoxWidth;
     const scaleY = svgRect.height / viewBoxHeight;
     
     setTooltipPos({
-      x: svgRect.left + (nodePos.x - minX) * scaleX,
-      y: svgRect.top + (nodePos.y - minY) * scaleY
+      x: svgRect.left + (nodePos.x - adjustedMinX) * scaleX,
+      y: svgRect.top + (nodePos.y - adjustedMinY) * scaleY
     });
     setHoveredNode(record);
   }
@@ -215,8 +242,9 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
               ref={svgRef}
               width="100%" 
               height="500" 
-              viewBox={`${minX} ${minY} ${viewBoxWidth} ${viewBoxHeight}`}
+              viewBox={`${adjustedMinX} ${adjustedMinY} ${viewBoxWidth} ${viewBoxHeight}`}
               preserveAspectRatio="xMidYMid meet"
+              style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }}
             >
               {/* Draw connecting lines from parent to children */}
               {nodePositions.map((nodePos, i) => {
