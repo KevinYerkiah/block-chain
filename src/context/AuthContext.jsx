@@ -9,50 +9,86 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     async function fetchUserProfile(authUserId) {
-        const { data } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', authUserId)
-            .single();
-        
-        if (data && (data.avatar_index == null || data.cover_color == null)) {
-            const avatarIndex = data.avatar_index ?? Math.floor(Math.random() * 4) + 1;
-            const coverColors = ['#FFDDD2', '#D4E8C2', '#C9E4DE', '#D6D0F0', '#FAE1C3', '#C5D8F0', '#F5C6D0', '#D0EAD0'];
-            const coverColor = data.cover_color ?? coverColors[Math.floor(Math.random() * coverColors.length)];
-            
-            await supabase
+        try {
+            const { data, error } = await supabase
                 .from('users')
-                .update({ avatar_index: avatarIndex, cover_color: coverColor })
-                .eq('id', authUserId);
+                .select('*')
+                .eq('id', authUserId)
+                .single();
             
-            data.avatar_index = avatarIndex;
-            data.cover_color = coverColor;
+            if (error) {
+                console.error('Error fetching user profile:', error);
+                return null;
+            }
+            
+            if (data && (data.avatar_index == null || data.cover_color == null)) {
+                const avatarIndex = data.avatar_index ?? Math.floor(Math.random() * 4) + 1;
+                const coverColors = ['#FFDDD2', '#D4E8C2', '#C9E4DE', '#D6D0F0', '#FAE1C3', '#C5D8F0', '#F5C6D0', '#D0EAD0'];
+                const coverColor = data.cover_color ?? coverColors[Math.floor(Math.random() * coverColors.length)];
+                
+                await supabase
+                    .from('users')
+                    .update({ avatar_index: avatarIndex, cover_color: coverColor })
+                    .eq('id', authUserId);
+                
+                data.avatar_index = avatarIndex;
+                data.cover_color = coverColor;
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('Unexpected error in fetchUserProfile:', error);
+            return null;
         }
-        
-        return data;
     }
 
     useEffect(() => {
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
-            if (session?.user) {
-                const profile = await fetchUserProfile(session.user.id);
-                setUser(profile);
+        let mounted = true;
+
+        const initAuth = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (!mounted) return;
+
+                if (session?.user) {
+                    const profile = await fetchUserProfile(session.user.id);
+                    if (mounted) {
+                        setUser(profile);
+                    }
+                }
+            } catch (error) {
+                console.error('Auth initialization error:', error);
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
             }
-            setLoading(false);
-        });
+        };
+
+        initAuth();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
+                if (!mounted) return;
+
                 if (session?.user) {
                     const profile = await fetchUserProfile(session.user.id);
-                    setUser(profile);
+                    if (mounted) {
+                        setUser(profile);
+                    }
                 } else {
-                    setUser(null);
+                    if (mounted) {
+                        setUser(null);
+                    }
                 }
             }
         );
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     async function signIn(email, password) {

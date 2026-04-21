@@ -8,8 +8,6 @@ import Button from './ui/Button.jsx';
 import { HomeIcon, MessageCircleIcon, MoreIcon, LogoutIcon, FireIcon } from './ui/icons.jsx';
 import BurnModal from './BurnModal.jsx';
 import styles from './Sidebar.module.css';
-import { supabase } from '../config/supabase.js';
-
 
 // Envelope icon for Inbox
 function EnvelopeIcon({ size = 24 }) {
@@ -75,7 +73,7 @@ export default function Sidebar() {
     const notificationsBellRef = useRef(null);
 
     useEffect(() => {
-        if (user) {
+        if (user?.id) {
             fetchUnreadCount();
             fetchNotifications();
             const channel = subscribeToNotifications();
@@ -86,7 +84,7 @@ export default function Sidebar() {
                 }
             };
         }
-    }, [user]);
+    }, [user?.id]);
 
     // Close dropdown when clicking outside (only for More dropdown now)
     useEffect(() => {
@@ -104,6 +102,8 @@ export default function Sidebar() {
     }, [moreOpen]);
 
     const fetchUnreadCount = async () => {
+        if (!user?.id) return;
+        
         try {
             const { count } = await supabase
                 .from('notifications')
@@ -114,10 +114,13 @@ export default function Sidebar() {
             setUnreadCount(count || 0);
         } catch (err) {
             console.error('Error fetching unread count:', err);
+            setUnreadCount(0);
         }
     };
 
     const fetchNotifications = async () => {
+        if (!user?.id) return;
+        
         try {
             const { data } = await supabase
                 .from('notifications')
@@ -129,10 +132,13 @@ export default function Sidebar() {
             setNotifications(data || []);
         } catch (err) {
             console.error('Error fetching notifications:', err);
+            setNotifications([]);
         }
     };
 
     const subscribeToNotifications = () => {
+        if (!user?.id) return null;
+        
         const channel = supabase
             .channel('my-notifications')
             .on(
