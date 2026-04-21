@@ -6,11 +6,38 @@ import Dropdown from './ui/Dropdown.jsx';
 import { HomeIcon, TemporalIcon, MessageCircleIcon, MoreIcon, LogoutIcon, FireIcon } from './ui/icons.jsx';
 import BurnModal from './BurnModal.jsx';
 import styles from './Sidebar.module.css';
+import { supabase } from '../config/supabase.js';
+
 
 export default function Sidebar() {
     const { user, signOut } = useAuth();
     const [moreOpen, setMoreOpen] = useState(false);
     const [burnModalOpen, setBurnModalOpen] = useState(false);
+
+    const togglePanic = async () => {
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
+
+    if (!user) return;
+
+    const { data: posts } = await supabase
+        .from('confessions')
+        .select('is_hidden')
+        .eq('user_id', user.id);
+
+    if (!posts?.length) return;
+
+    // safer: check if ANY post is hidden
+    const newState = !posts.some(p => p.is_hidden);
+
+    const { error } = await supabase
+        .from('confessions')
+        .update({ is_hidden: newState })
+        .eq('user_id', user.id);
+
+    if (!error) window.location.reload();
+    };
+
 
     const moreItems = [
         {
@@ -24,7 +51,16 @@ export default function Sidebar() {
             onClick: () => setBurnModalOpen(true),
             variant: 'danger',
         },
+        {
+            label: 'Panic',
+            icon: <FireIcon size={20} />,
+            onClick: togglePanic,
+            variant: 'danger',
+        }
     ];
+
+
+  
 
     return (
         <aside className={styles.sidebar}>
