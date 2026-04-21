@@ -11,13 +11,11 @@ import cover3 from '../cover/cover3.jpeg';
 const covers = [cover1, cover2, cover3];
 
 export default function LoginPage() {
-    const { signIn, verifyOtp } = useAuth();
+    const { signIn } = useAuth();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [otp, setOtp] = useState('');
-    const [step, setStep] = useState('credentials');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [currentCover, setCurrentCover] = useState(0);
@@ -29,38 +27,18 @@ export default function LoginPage() {
         return () => clearInterval(interval);
     }, []);
 
-    const handleCredentials = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
         try {
             await signIn(email, password);
-            setStep('otp');
+            navigate('/');
         } catch (err) {
             setError(err.message || 'Invalid email or password');
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleOtp = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        try {
-            await verifyOtp(email, otp);
-            navigate('/');
-        } catch (err) {
-            setError(err.message || 'Invalid or expired code. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleBack = () => {
-        setStep('credentials');
-        setError('');
-        setOtp('');
     };
 
     return (
@@ -73,83 +51,43 @@ export default function LoginPage() {
                     </div>
 
                     <div className={styles.card}>
-                        {step === 'credentials' ? (
-                            <>
-                                <h2 className={styles.title}>Welcome back</h2>
-                                <p className={styles.subtitle}>Sign in to continue sharing</p>
+                        <h2 className={styles.title}>Welcome back</h2>
+                        <p className={styles.subtitle}>Sign in to continue sharing</p>
 
-                                <form onSubmit={handleCredentials} className={styles.form}>
-                                    <Input
-                                        type="email"
-                                        placeholder="Email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        autoComplete="email"
-                                    />
-                                    <Input
-                                        type="password"
-                                        placeholder="Password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        autoComplete="current-password"
-                                    />
-                                    {error && <p className={styles.error}>{error}</p>}
-                                    <Button
-                                        type="submit"
-                                        variant="primary"
-                                        fullWidth
-                                        loading={loading}
-                                        disabled={!email || !password}
-                                    >
-                                        Log in
-                                    </Button>
-                                </form>
+                        <form onSubmit={handleSubmit} className={styles.form}>
+                            <Input
+                                type="email"
+                                placeholder="Email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="email"
+                            />
+                            <Input
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                autoComplete="current-password"
+                            />
+                            {error && <p className={styles.error}>{error}</p>}
+                            <Button
+                                type="submit"
+                                variant="primary"
+                                fullWidth
+                                loading={loading}
+                                disabled={!email || !password}
+                            >
+                                Log in
+                            </Button>
+                        </form>
 
-                                <div className={styles.divider}>
-                                    <span>New here?</span>
-                                </div>
+                        <div className={styles.divider}>
+                            <span>New here?</span>
+                        </div>
 
-                                <Link to="/register" className={styles.secondaryButton}>
-                                    Create an account
-                                </Link>
-                            </>
-                        ) : (
-                            <>
-                                <h2 className={styles.title}>Verify your identity</h2>
-                                <p className={styles.subtitle}>
-                                    A 6-digit verification code was sent to{' '}
-                                    <strong>{email}</strong>. Check your inbox.
-                                </p>
-
-                                <form onSubmit={handleOtp} className={styles.form}>
-                                    <Input
-                                        type="text"
-                                        placeholder="Enter 6-digit code"
-                                        value={otp}
-                                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                        maxLength={6}
-                                    />
-                                    {error && <p className={styles.error}>{error}</p>}
-                                    <Button
-                                        type="submit"
-                                        variant="primary"
-                                        fullWidth
-                                        loading={loading}
-                                        disabled={otp.length !== 6}
-                                    >
-                                        Verify Code
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        fullWidth
-                                        onClick={handleBack}
-                                    >
-                                        ← Back
-                                    </Button>
-                                </form>
-                            </>
-                        )}
+                        <Link to="/register" className={styles.secondaryButton}>
+                            Create an account
+                        </Link>
                     </div>
 
                     <p className={styles.footer}>
