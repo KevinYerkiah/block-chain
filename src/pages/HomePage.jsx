@@ -115,6 +115,12 @@ export default function HomePage() {
             .order('created_at', { ascending: false })
             .range(offset, offset + 49);
 
+        if (error) {
+            console.error('Error fetching confessions:', error);
+        }
+
+        console.log('Confessions query result:', { data, error, dataLength: data?.length });
+
         if (!error && data) {
             const confessionIds = data.map((c) => c.id);
 
