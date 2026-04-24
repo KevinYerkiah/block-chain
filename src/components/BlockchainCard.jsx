@@ -88,41 +88,45 @@ export default function BlockchainCard({ onRecordsFetched }) {
             </svg>
           ) : (
             <svg width="100%" height="48" viewBox="0 0 200 48">
-              {/* Mini tree preview - show branching structure */}
-              {records.length === 1 ? (
-                <circle cx="100" cy="24" r="6" fill="currentColor" opacity="0.4" />
-              ) : records.length === 2 ? (
-                <>
-                  <line x1="100" y1="12" x2="80" y2="32" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
-                  <circle cx="100" cy="12" r="5" fill="currentColor" opacity="0.4" />
-                  <circle cx="80" cy="32" r="5" fill="currentColor" opacity="0.4" />
-                </>
-              ) : (
-                <>
-                  {/* Root */}
-                  <circle cx="100" cy="8" r="5" fill="currentColor" opacity="0.4" />
-                  {/* Level 1 */}
-                  <line x1="100" y1="8" x2="70" y2="24" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
-                  <line x1="100" y1="8" x2="130" y2="24" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
-                  <circle cx="70" cy="24" r="5" fill="currentColor" opacity="0.4" />
-                  <circle cx="130" cy="24" r="5" fill="currentColor" opacity="0.4" />
-                  {/* Level 2 - if enough nodes */}
-                  {records.length > 3 && (
-                    <>
-                      <line x1="70" y1="24" x2="50" y2="40" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
-                      <circle cx="50" cy="40" r="4" fill="currentColor" opacity="0.4" />
-                    </>
-                  )}
-                  {records.length > 4 && (
-                    <>
-                      <line x1="70" y1="24" x2="90" y2="40" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
-                      <circle cx="90" cy="40" r="4" fill="currentColor" opacity="0.4" />
-                    </>
-                  )}
-                  {records.length > 5 && (
-                    <text x="170" y="28" fontSize="14" fill="currentColor" opacity="0.4" textAnchor="end">+{records.length - 5}</text>
-                  )}
-                </>
+              {/* Mini network preview - show first 5 nodes as static circles connected by lines */}
+              {records.slice(0, 5).map((_, i) => {
+                const positions = [
+                  { x: 40, y: 24 },
+                  { x: 70, y: 18 },
+                  { x: 100, y: 30 },
+                  { x: 130, y: 20 },
+                  { x: 160, y: 26 },
+                ];
+                const pos = positions[i];
+                const nextPos = positions[i + 1];
+                
+                return (
+                  <g key={i}>
+                    {nextPos && (
+                      <line 
+                        x1={pos.x} 
+                        y1={pos.y} 
+                        x2={nextPos.x} 
+                        y2={nextPos.y} 
+                        stroke="currentColor" 
+                        strokeWidth="1.5" 
+                        opacity="0.3"
+                      />
+                    )}
+                    <circle 
+                      cx={pos.x} 
+                      cy={pos.y} 
+                      r="5" 
+                      fill="currentColor" 
+                      opacity="0.4" 
+                    />
+                  </g>
+                );
+              })}
+              {records.length > 5 && (
+                <text x="190" y="28" fontSize="12" fill="currentColor" opacity="0.4" textAnchor="end">
+                  +{records.length - 5}
+                </text>
               )}
             </svg>
           )}

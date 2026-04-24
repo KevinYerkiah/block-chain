@@ -1,20 +1,150 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../config/supabase';
+import { colors } from '../config/colors';
 import styles from './BlockchainGraph.module.css';
+
+// Force simulation constants
+const REPULSION = 5000;       // Increased from 3000 for more spacing
+const ATTRACTION = 0.03;
+const DAMPING = 0.85;
+const IDEAL_DISTANCE = 150;   // Increased from 120 for more spacing
+const CENTER_GRAVITY = 0.01;
 
 export default function BlockchainGraph({ isOpen, onClose, initialRecords, highlightEntityId }) {
   const [records, setRecords] = useState(initialRecords || []);
+  const [nodes, setNodes] = useState([]);
   const [hoveredNode, setHoveredNode] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const [newNodeIds, setNewNodeIds] = useState(new Set());
-  const [expandedNode, setExpandedNode] = useState(null);
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [draggedNode, setDraggedNode] = useState(null);
+  const [expandedNode, setExpandedNode] = useState(null);
+  
   const svgRef = useRef(null);
+  const animationRef = useRef(null);
+  const settleTicksRef = useRef(0);
 
+  // Initialize nodes from records
+  useEffect(() => {
+    if (records.length === 0) {
+      setNodes([]);
+      return;
+    }
+
+    const svgRect = svgRef.current?.getBoundingClientRect();
+    const centerX = svgRect ? svgRect.width / 2 : 400;
+    const centerY = svgRect ? svgRect.height / 2 : 300;
+
+    const newNodes = records.map((record, index) => ({
+      id: record.id,
+      record,
+      index,
+      x: centerX + (Math.random() - 0.5) * 100,
+      y: centerY + (Math.random() - 0.5) * 100,
+      vx: 0,
+      vy: 0,
+    }));
+
+    setNodes(newNodes);
+    settleTicksRef.current = 0;
+  }, [records]);
+
+  // Force simulation
+  useEffect(() => {
+    if (nodes.length === 0 || !isOpen) return;
+
+    const simulate = () => {
+      setNodes(prevNodes => {
+        const newNodes = prevNodes.map(node => ({ ...node }));
+        const svgRect = svgRef.current?.getBoundingClientRect();
+        const centerX = svgRect ? svgRect.width / 2 : 400;
+        const centerY = svgRect ? svgRect.height / 2 : 300;
+
+        // Apply forces
+        for (let i = 0; i < newNodes.length; i++) {
+          const nodeA = newNodes[i];
+          
+          // Skip if being dragged
+          if (draggedNode === nodeA.id) continue;
+
+          // Repulsion between all nodes
+          for (let j = i + 1; j < newNodes.length; j++) {
+            const nodeB = newNodes[j];
+            const dx = nodeB.x - nodeA.x;
+            const dy = nodeB.y - nodeA.y;
+            const distSq = dx * dx + dy * dy;
+            const dist = Math.sqrt(distSq);
+            
+            if (dist > 0) {
+              const force = REPULSION / distSq;
+              const fx = (dx / dist) * force;
+              const fy = (dy / dist) * force;
+              
+              nodeA.vx -= fx;
+              nodeA.vy -= fy;
+              nodeB.vx += fx;
+              nodeB.vy += fy;
+            }
+          }
+
+          // Attraction along edges (chronological connections)
+          if (i > 0) {
+            const nodeB = newNodes[i - 1];
+            const dx = nodeB.x - nodeA.x;
+            const dy = nodeB.y - nodeA.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 0) {
+              const force = (dist - IDEAL_DISTANCE) * ATTRACTION;
+              const fx = (dx / dist) * force;
+              const fy = (dy / dist) * force;
+              
+              nodeA.vx += fx;
+              nodeA.vy += fy;
+              nodeB.vx -= fx;
+              nodeB.vy -= fy;
+            }
+          }
+
+          // Center gravity
+          const dx = centerX - nodeA.x;
+          const dy = centerY - nodeA.y;
+          nodeA.vx += dx * CENTER_GRAVITY;
+          nodeA.vy += dy * CENTER_GRAVITY;
+        }
+
+        // Apply damping and update positions
+        for (const node of newNodes) {
+          if (draggedNode === node.id) continue;
+          
+          node.vx *= DAMPING;
+          node.vy *= DAMPING;
+          node.x += node.vx;
+          node.y += node.vy;
+        }
+
+        return newNodes;
+      });
+
+      settleTicksRef.current++;
+      animationRef.current = requestAnimationFrame(simulate);
+    };
+
+    animationRef.current = requestAnimationFrame(simulate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [nodes.length, isOpen, draggedNode]);
+
+  // Subscribe to new blockchain records
   useEffect(() => {
     if (!isOpen) return;
 
-    // Subscribe to new blockchain records
     const channel = supabase
       .channel('blockchain-graph')
       .on('postgres_changes', {
@@ -24,17 +154,13 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
         filter: 'status=eq.confirmed',
       }, (payload) => {
         if (payload.new.entity_type === 'confession') {
-          setRecords(prev => [...prev, payload.new]);
-          
-          // Mark as new for entry animation
-          setNewNodeIds(prev => new Set([...prev, payload.new.id]));
-          setTimeout(() => {
-            setNewNodeIds(prev => {
-              const next = new Set(prev);
-              next.delete(payload.new.id);
-              return next;
-            });
-          }, 500);
+          setRecords(prev => {
+            // Check if record already exists to avoid duplicates
+            if (prev.some(r => r.id === payload.new.id)) {
+              return prev;
+            }
+            return [...prev, payload.new];
+          });
         }
       })
       .subscribe();
@@ -44,6 +170,7 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
     };
   }, [isOpen]);
 
+  // Escape key handler
   useEffect(() => {
     function handleEscape(e) {
       if (e.key === 'Escape') onClose();
@@ -57,149 +184,72 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
 
   if (!isOpen) return null;
 
-  // Tree-like branching layout algorithm with collision detection
-  function calculateNodePositions() {
-    if (records.length === 0) return [];
-    
-    const positions = [];
-    const NODE_RADIUS = 14;
-    const MIN_H_SPACING = 120; // Minimum horizontal spacing
-    const LEVEL_HEIGHT = 140;  // Vertical spacing between levels
-    const MIN_NODE_DISTANCE = 50; // Minimum distance between any two nodes
-    
-    // Calculate tree structure with dynamic spacing
-    records.forEach((record, i) => {
-      let x, y;
-      
-      if (i === 0) {
-        // Root node - centered at top
-        x = 400;
-        y = 80;
-      } else {
-        // Calculate level (row) and position within level
-        const level = Math.floor(Math.log2(i + 1));
-        const posInLevel = i - (Math.pow(2, level) - 1);
-        const nodesInLevel = Math.pow(2, level);
-        
-        // Parent node index
-        const parentIndex = Math.floor((i - 1) / 2);
-        const parentPos = positions[parentIndex];
-        
-        // Determine if left or right child
-        const isLeftChild = i % 2 === 1;
-        
-        // Calculate horizontal spread that adapts to tree depth
-        // Wider spacing at top, gradually decreases but never too narrow
-        const spreadFactor = Math.max(0.4, 1 - level * 0.12);
-        let horizontalOffset = MIN_H_SPACING * spreadFactor;
-        
-        // For deeper levels, increase spacing to prevent overlap
-        if (level > 3) {
-          horizontalOffset *= (1 + (level - 3) * 0.15);
-        }
-        
-        x = parentPos.x + (isLeftChild ? -horizontalOffset : horizontalOffset);
-        y = 80 + level * LEVEL_HEIGHT;
-        
-        // Collision detection and adjustment
-        let attempts = 0;
-        let collisionDetected = true;
-        
-        while (collisionDetected && attempts < 10) {
-          collisionDetected = false;
-          
-          // Check distance to all existing nodes
-          for (const existingPos of positions) {
-            const distance = Math.sqrt(
-              Math.pow(x - existingPos.x, 2) + 
-              Math.pow(y - existingPos.y, 2)
-            );
-            
-            if (distance < MIN_NODE_DISTANCE) {
-              collisionDetected = true;
-              // Push node away from collision
-              const angle = Math.atan2(y - existingPos.y, x - existingPos.x);
-              x += Math.cos(angle) * 10;
-              y += Math.sin(angle) * 5;
-              break;
-            }
-          }
-          
-          attempts++;
-        }
-        
-        // Add slight wave variation for organic feel (reduced to avoid overlap)
-        x += Math.sin(i * 0.3) * 8;
-      }
-      
-      positions.push({ x, y, record, index: i });
-    });
-    
-    return positions;
+  // Zoom and pan handlers
+  function handleWheel(e) {
+    e.preventDefault();
+    const delta = e.deltaY * -0.001;
+    setZoom(prevZoom => Math.max(0.3, Math.min(3, prevZoom + delta)));
   }
 
-  const nodePositions = calculateNodePositions();
-  
-  // Calculate dynamic zoom based on number of nodes
-  useEffect(() => {
-    const nodeCount = records.length;
-    let newZoom = 1;
-    
-    if (nodeCount <= 3) {
-      newZoom = 1;
-    } else if (nodeCount <= 7) {
-      newZoom = 0.9;
-    } else if (nodeCount <= 15) {
-      newZoom = 0.75;
-    } else if (nodeCount <= 31) {
-      newZoom = 0.6;
-    } else if (nodeCount <= 63) {
-      newZoom = 0.5;
-    } else {
-      newZoom = 0.4;
+  function handleBackgroundMouseDown(e) {
+    if (e.target.tagName === 'svg' || e.target.tagName === 'g') {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     }
-    
-    setZoom(newZoom);
-  }, [records.length]);
-  
-  // Calculate viewBox to fit all nodes with padding, adjusted by zoom
-  const padding = 120 / zoom;
-  const minX = Math.min(...nodePositions.map(p => p.x), 0) - padding;
-  const maxX = Math.max(...nodePositions.map(p => p.x), 800) + padding;
-  const minY = 0;
-  const maxY = Math.max(...nodePositions.map(p => p.y), 400) + padding;
-  const viewBoxWidth = (maxX - minX) / zoom;
-  const viewBoxHeight = (maxY - minY) / zoom;
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
-  const adjustedMinX = centerX - viewBoxWidth / 2;
-  const adjustedMinY = centerY - viewBoxHeight / 2;
+  }
 
-  function handleNodeMouseEnter(record, index, event) {
+  function handleMouseMove(e) {
+    if (isPanning) {
+      setPan({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y,
+      });
+    }
+
+    if (draggedNode !== null) {
+      const svgRect = svgRef.current.getBoundingClientRect();
+      const x = (e.clientX - svgRect.left - pan.x) / zoom;
+      const y = (e.clientY - svgRect.top - pan.y) / zoom;
+      
+      setNodes(prevNodes => prevNodes.map(node => 
+        node.id === draggedNode 
+          ? { ...node, x, y, vx: 0, vy: 0 }
+          : node
+      ));
+    }
+  }
+
+  function handleMouseUp() {
+    setIsPanning(false);
+    setDraggedNode(null);
+  }
+
+  function handleNodeMouseDown(e, nodeId) {
+    e.stopPropagation();
+    setDraggedNode(nodeId);
+  }
+
+  function handleDoubleClick() {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }
+
+  function handleNodeMouseEnter(node, event) {
     const svgRect = svgRef.current.getBoundingClientRect();
-    const nodePos = nodePositions.find(p => p.index === index);
-    if (!nodePos) return;
-    
-    // Convert SVG coordinates to screen coordinates with zoom adjustment
-    const scaleX = svgRect.width / viewBoxWidth;
-    const scaleY = svgRect.height / viewBoxHeight;
-    
     setTooltipPos({
-      x: svgRect.left + (nodePos.x - adjustedMinX) * scaleX,
-      y: svgRect.top + (nodePos.y - adjustedMinY) * scaleY
+      x: svgRect.left + node.x * zoom + pan.x,
+      y: svgRect.top + node.y * zoom + pan.y,
     });
-    setHoveredNode(record);
+    setHoveredNode(node.record);
   }
 
   function handleNodeMouseLeave() {
     setHoveredNode(null);
   }
 
-  function handleNodeClick(record, index) {
-    setExpandedNode(expandedNode?.id === record.id ? null : record);
+  function handleNodeClick(node) {
+    setExpandedNode(expandedNode?.id === node.record.id ? null : node.record);
   }
-
-  const NODE_RADIUS = 14;
 
   function formatTxHash(hash) {
     if (!hash) return '';
@@ -210,6 +260,28 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
     return new Date(dateString).toLocaleString();
   }
 
+  // Generate edges
+  const edges = [];
+  for (let i = 0; i < nodes.length; i++) {
+    if (i > 0) {
+      edges.push({
+        from: nodes[i - 1],
+        to: nodes[i],
+      });
+    }
+  }
+
+  // If a node has no connections, add a self-loop
+  if (nodes.length === 1) {
+    edges.push({
+      from: nodes[0],
+      to: nodes[0],
+      selfLoop: true,
+    });
+  }
+
+  const isSettled = settleTicksRef.current > 200;
+
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.content} onClick={(e) => e.stopPropagation()}>
@@ -218,10 +290,13 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
         </button>
 
         <div className={styles.header}>
-          <h1 className={styles.title}>Blockchain</h1>
+          <h1 className={styles.title}>Blockchain Network</h1>
           <p className={styles.subtitle}>
             {records.length} confession{records.length !== 1 ? 's' : ''} permanently recorded
           </p>
+          <button className={styles.resetButton} onClick={handleDoubleClick}>
+            Reset View
+          </button>
         </div>
 
         {records.length === 0 ? (
@@ -238,97 +313,174 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
           </div>
         ) : (
           <div className={styles.graphContainer}>
-            <svg 
+            <svg
               ref={svgRef}
-              width="100%" 
-              height="500" 
-              viewBox={`${adjustedMinX} ${adjustedMinY} ${viewBoxWidth} ${viewBoxHeight}`}
-              preserveAspectRatio="xMidYMid meet"
-              style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }}
+              width="100%"
+              height="100%"
+              onWheel={handleWheel}
+              onMouseDown={handleBackgroundMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onDoubleClick={handleDoubleClick}
+              style={{ 
+                cursor: isPanning ? 'grabbing' : 'grab',
+                opacity: isSettled ? 1 : 0.3,
+                transition: 'opacity 0.5s ease',
+              }}
             >
-              {/* Draw connecting lines from parent to children */}
-              {nodePositions.map((nodePos, i) => {
-                if (i === 0) return null; // Root has no parent
-                
-                const parentIndex = Math.floor((i - 1) / 2);
-                const parentPos = nodePositions[parentIndex];
-                
-                return (
-                  <line
-                    key={`line-${nodePos.record.id}`}
-                    x1={parentPos.x}
-                    y1={parentPos.y}
-                    x2={nodePos.x}
-                    y2={nodePos.y}
-                    className={styles.chainLine}
-                  />
-                );
-              })}
+              <defs>
+                <marker
+                  id="arrowhead"
+                  markerWidth="8"
+                  markerHeight="6"
+                  refX="8"
+                  refY="3"
+                  orient="auto"
+                >
+                  <polygon points="0 0, 8 3, 0 6" fill={colors.primary} opacity="0.5" />
+                </marker>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
 
-              {/* Draw nodes */}
-              {nodePositions.map((nodePos) => {
-                const isNewest = nodePos.index === records.length - 1;
-                const isNew = newNodeIds.has(nodePos.record.id);
-                const isExpanded = expandedNode?.id === nodePos.record.id;
-                const isHighlighted = highlightEntityId && nodePos.record.entity_id === highlightEntityId;
-                
-                return (
-                  <g key={nodePos.record.id}>
-                    {/* Ripple effect for newest node */}
-                    {isNewest && (
-                      <circle
-                        cx={nodePos.x}
-                        cy={nodePos.y}
-                        r="18"
-                        className={styles.ripple}
+              <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+                {/* Draw edges */}
+                {edges.map((edge, i) => {
+                  if (edge.selfLoop) {
+                    // Self-loop for isolated node
+                    const node = edge.from;
+                    const loopRadius = 40;
+                    return (
+                      <g key={`edge-${i}`}>
+                        <path
+                          d={`M ${node.x + 28} ${node.y} 
+                              A ${loopRadius} ${loopRadius} 0 1 1 ${node.x} ${node.y + 28}`}
+                          fill="none"
+                          stroke={colors.primary}
+                          strokeWidth="1.5"
+                          opacity="0.35"
+                          markerEnd="url(#arrowhead)"
+                        />
+                        <text
+                          x={node.x + 35}
+                          y={node.y + 35}
+                          fontSize="9"
+                          fill={colors.textMuted}
+                          textAnchor="middle"
+                        >
+                          ON_CHAIN
+                        </text>
+                      </g>
+                    );
+                  }
+
+                  const dx = edge.to.x - edge.from.x;
+                  const dy = edge.to.y - edge.from.y;
+                  const dist = Math.sqrt(dx * dx + dy * dy);
+                  const midX = (edge.from.x + edge.to.x) / 2;
+                  const midY = (edge.from.y + edge.to.y) / 2;
+
+                  // Shorten line to account for node radius
+                  const nodeRadius = edge.to.index === nodes.length - 1 ? 34 : 28;
+                  const shortenFactor = (dist - nodeRadius) / dist;
+                  const toX = edge.from.x + dx * shortenFactor;
+                  const toY = edge.from.y + dy * shortenFactor;
+
+                  return (
+                    <g key={`edge-${i}`}>
+                      <line
+                        x1={edge.from.x}
+                        y1={edge.from.y}
+                        x2={toX}
+                        y2={toY}
+                        stroke={colors.primary}
+                        strokeWidth="1.5"
+                        opacity="0.35"
+                        markerEnd="url(#arrowhead)"
                       />
-                    )}
-                    
-                    {/* Expanded highlight ring */}
-                    {isExpanded && (
+                      <text
+                        x={midX}
+                        y={midY - 5}
+                        fontSize="9"
+                        fill={colors.textMuted}
+                        textAnchor="middle"
+                      >
+                        ON_CHAIN
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Draw nodes */}
+                {nodes.map((node) => {
+                  const isNewest = node.index === nodes.length - 1;
+                  const isExpanded = expandedNode?.id === node.record.id;
+                  const isHighlighted = highlightEntityId && node.record.entity_id === highlightEntityId;
+                  const radius = isNewest ? 34 : 28;
+
+                  return (
+                    <g key={node.id}>
+                      {/* Green pulsing ring for highlighted node */}
+                      {isHighlighted && (
+                        <circle
+                          cx={node.x}
+                          cy={node.y}
+                          r={radius + 8}
+                          fill="none"
+                          stroke={colors.success}
+                          strokeWidth="3"
+                          opacity="0.6"
+                          className={styles.highlightRing}
+                        />
+                      )}
+                      
+                      {/* Node circle */}
                       <circle
-                        cx={nodePos.x}
-                        cy={nodePos.y}
-                        r="24"
-                        className={styles.expandedRing}
+                        cx={node.x}
+                        cy={node.y}
+                        r={radius}
+                        fill={isHighlighted ? colors.success : colors.primary}
+                        fillOpacity="0.85"
+                        stroke={isHighlighted ? colors.success : colors.primary}
+                        strokeWidth="2"
+                        filter={isNewest || isHighlighted ? 'url(#glow)' : undefined}
+                        className={styles.node}
+                        style={{
+                          cursor: 'pointer',
+                        }}
+                        onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+                        onMouseEnter={(e) => handleNodeMouseEnter(node, e)}
+                        onMouseLeave={handleNodeMouseLeave}
+                        onClick={() => handleNodeClick(node)}
                       />
-                    )}
-                    
-                    {/* Highlighted node ring (green for blockchain confessions) */}
-                    {isHighlighted && (
-                      <circle
-                        cx={nodePos.x}
-                        cy={nodePos.y}
-                        r="26"
-                        className={styles.highlightRing}
-                      />
-                    )}
-                    
-                    {/* Main node */}
-                    <circle
-                      cx={nodePos.x}
-                      cy={nodePos.y}
-                      r={isNewest ? 18 : NODE_RADIUS}
-                      className={`${styles.node} ${isNew ? styles.nodeEnter : ''} ${isExpanded ? styles.nodeExpanded : ''} ${isHighlighted ? styles.nodeHighlighted : ''}`}
-                      style={{ animationDelay: `${nodePos.index * 0.3}s` }}
-                      onMouseEnter={(e) => handleNodeMouseEnter(nodePos.record, nodePos.index, e)}
-                      onMouseLeave={handleNodeMouseLeave}
-                      onClick={() => handleNodeClick(nodePos.record, nodePos.index)}
-                    />
-                    
-                    {/* Node label - confession number */}
-                    <text
-                      x={nodePos.x}
-                      y={nodePos.y + 35}
-                      className={styles.nodeLabel}
-                      textAnchor="middle"
-                    >
-                      #{nodePos.index + 1}
-                    </text>
-                  </g>
-                );
-              })}
+                      
+                      {/* Node label */}
+                      <text
+                        x={node.x}
+                        y={node.y + 5}
+                        fontSize="11"
+                        fontWeight="bold"
+                        fill="white"
+                        textAnchor="middle"
+                        pointerEvents="none"
+                      >
+                        #{node.index + 1}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
             </svg>
+
+            {/* Zoom indicator */}
+            <div className={styles.zoomIndicator}>
+              {Math.round(zoom * 100)}%
+            </div>
           </div>
         )}
 
@@ -400,7 +552,7 @@ export default function BlockchainGraph({ isOpen, onClose, initialRecords, highl
             className={styles.tooltip}
             style={{
               left: `${tooltipPos.x}px`,
-              top: `${tooltipPos.y - 80}px`
+              top: `${tooltipPos.y - 80}px`,
             }}
           >
             <p className={styles.tooltipTitle}>
