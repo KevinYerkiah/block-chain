@@ -8,6 +8,11 @@ import pfp1 from '../img/pfp1.png';
 import pfp2 from '../img/pfp2.png';
 import pfp3 from '../img/pfp3.png';
 import pfp4 from '../img/pfp4.png';
+import pfp5 from '../img/pfp5.png';
+import pfp6 from '../img/pfp6.png';
+import pfp7 from '../img/pfp7.png';
+import pfp8 from '../img/pfp8.png';
+import pfp9 from '../img/pfp9.png';
 import styles from './EditProfileModal.module.css';
 
 const avatarOptions = [
@@ -15,6 +20,11 @@ const avatarOptions = [
     { index: 2, src: pfp2 },
     { index: 3, src: pfp3 },
     { index: 4, src: pfp4 },
+    { index: 5, src: pfp5 },
+    { index: 6, src: pfp6 },
+    { index: 7, src: pfp7 },
+    { index: 8, src: pfp8 },
+    { index: 9, src: pfp9 },
 ];
 
 export default function EditProfileModal({ isOpen, onClose, user, onSave }) {

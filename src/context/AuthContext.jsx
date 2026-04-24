@@ -65,7 +65,7 @@ export function AuthProvider({ children }) {
             email,
             password_hash: 'managed_by_supabase',
             dh_public_key: 'dh_placeholder',
-            avatar_index: Math.floor(Math.random() * 4) + 1,
+            avatar_index: Math.floor(Math.random() * 9) + 1,
             cover_color: ['#FFDDD2','#D4E8C2','#C9E4DE','#D6D0F0','#FAE1C3','#C5D8F0','#F5C6D0','#D0EAD0'][Math.floor(Math.random() * 8)],
         });
 
