@@ -35,6 +35,7 @@ export function AuthProvider({ children }) {
                     setUser(profile);
                 } catch (err) {
                     console.warn('Profile fetch failed:', err.message);
+                    await supabase.auth.signOut();
                     setUser(null);
                 } finally {
                     setLoading(false);
