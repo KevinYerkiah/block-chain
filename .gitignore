@@ -50,6 +50,9 @@ TIMER_GUIDE.md
 RATE_LIMIT_FIX.md
 CHAT_FEATURE.md
 CHAT_IMPLEMENTATION_STEP2.md
+BLOCKCHAIN.md
+BLOCKCHAIN_GRAPH.md
+NOTIFICATIONS_IMPLEMENTATION.md
 
 # Temporary files
 *.tmp
@@ -63,6 +66,15 @@ coverage/
 # Misc
 *.bak
 *.orig
+*.zip
 
-node_modules/
+# SQL dumps and scripts (if not needed in repo)
+*.sql
 
+# Standalone config files
+colors.js
+supabase.js
+
+# Nested project folders
+block-chain/
+confession-blockchain/

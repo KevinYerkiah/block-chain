@@ -11,8 +11,14 @@ import cover3 from '../cover/cover3.jpeg';
 const covers = [cover1, cover2, cover3];
 
 export default function LoginPage() {
-    const { signIn } = useAuth();
+    const { user, loading: authLoading, signIn } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            navigate('/', { replace: true });
+        }
+    }, [user, authLoading, navigate]);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -33,7 +39,6 @@ export default function LoginPage() {
         setError('');
         try {
             await signIn(email, password);
-            navigate('/');
         } catch (err) {
             setError(err.message || 'Invalid email or password');
         } finally {

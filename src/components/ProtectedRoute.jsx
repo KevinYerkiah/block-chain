@@ -1,21 +1,25 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
-import Loader from './ui/Loader.jsx';
+import { useAuth } from '../context/AuthContext';
 
-export default function ProtectedRoute() {
+export default function ProtectedRoute({ children }) {
     const { user, loading } = useAuth();
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-                <Loader size="md" />
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100vh',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '15px',
+                color: '#78716C',
+            }}>
+                Loading...
             </div>
         );
     }
 
-    if (!user) {
-        return <Navigate to="/login" replace />;
-    }
-
-    return <Outlet />;
+    if (!user) return <Navigate to="/login" replace />;
+    return children ? children : <Outlet />;
 }

@@ -12,8 +12,15 @@ import cover3 from '../cover/cover3.jpeg';
 const covers = [cover1, cover2, cover3];
 
 export default function RegisterPage() {
-    const { signUp } = useAuth();
+    const { user, loading: authLoading, signUp } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            navigate('/', { replace: true });
+        }
+    }, [user, authLoading, navigate]);
+
     const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
     const [displayName, setDisplayName] = useState('');
@@ -54,7 +61,6 @@ export default function RegisterPage() {
             }
 
             await signUp(email, password, cleanUsername, cleanDisplayName);
-            navigate('/');
         } catch (err) {
             setError(err.message || 'Failed to create account');
         } finally {

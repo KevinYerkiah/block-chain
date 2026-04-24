@@ -1,162 +1,88 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../config/supabase.js';
-import { storeUserOnChain } from '../security/blockchainService.js';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { supabase } from '../config/supabase';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    async function fetchUserProfile(authUserId) {
-        try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', authUserId)
-                .single();
-            
-            if (error) {
-                console.error('Error fetching user profile:', error);
-                return null;
-            }
-            
-            if (data && (data.avatar_index == null || data.cover_color == null)) {
-                const avatarIndex = data.avatar_index ?? Math.floor(Math.random() * 4) + 1;
-                const coverColors = ['#FFDDD2', '#D4E8C2', '#C9E4DE', '#D6D0F0', '#FAE1C3', '#C5D8F0', '#F5C6D0', '#D0EAD0'];
-                const coverColor = data.cover_color ?? coverColors[Math.floor(Math.random() * coverColors.length)];
-                
-                await supabase
-                    .from('users')
-                    .update({ avatar_index: avatarIndex, cover_color: coverColor })
-                    .eq('id', authUserId);
-                
-                data.avatar_index = avatarIndex;
-                data.cover_color = coverColor;
-            }
-            
-            return data;
-        } catch (error) {
-            console.error('Unexpected error in fetchUserProfile:', error);
-            return null;
-        }
-    }
+    const subscribed = useRef(false);
 
     useEffect(() => {
-        let mounted = true;
+        if (subscribed.current) return;
+        subscribed.current = true;
 
-        const initAuth = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                
-                if (!mounted) return;
-
-                if (session?.user) {
-                    const profile = await fetchUserProfile(session.user.id);
-                    if (mounted) {
-                        setUser(profile);
-                    }
-                }
-            } catch (error) {
-                console.error('Auth initialization error:', error);
-            } finally {
-                if (mounted) {
-                    setLoading(false);
-                }
-            }
-        };
-
-        initAuth();
+        const timeout = setTimeout(() => setLoading(false), 5000);
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                if (!mounted) return;
+                clearTimeout(timeout);
 
-                if (session?.user) {
-                    const profile = await fetchUserProfile(session.user.id);
-                    if (mounted) {
-                        setUser(profile);
-                    }
-                } else {
-                    if (mounted) {
-                        setUser(null);
-                    }
+                if (event === 'SIGNED_OUT' || !session) {
+                    setUser(null);
+                    setLoading(false);
+                    return;
+                }
+
+                try {
+                    const { data: profile, error } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    if (error) throw error;
+                    setUser(profile);
+                } catch (err) {
+                    console.warn('Profile fetch failed:', err.message);
+                    setUser(null);
+                } finally {
+                    setLoading(false);
                 }
             }
         );
 
         return () => {
-            mounted = false;
             subscription.unsubscribe();
+            subscribed.current = false;
+            clearTimeout(timeout);
         };
     }, []);
 
-    async function signIn(email, password) {
+    const signIn = async (email, password) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // User is now signed in - no OTP needed
-    }
+    };
 
-    async function verifyOtp(email, token) {
-        const { error } = await supabase.auth.verifyOtp({
-            email,
-            token,
-            type: 'email',
-        });
-        if (error) throw error;
-    }
+    const signUp = async (email, password, username, displayName) => {
+        const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+        if (authError) throw authError;
 
-    async function signUp(email, password, username, displayName) {
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-
-        const avatarIndex = Math.floor(Math.random() * 4) + 1;
-        const coverColors = ['#FFDDD2', '#D4E8C2', '#C9E4DE', '#D6D0F0', '#FAE1C3', '#C5D8F0', '#F5C6D0', '#D0EAD0'];
-        const coverColor = coverColors[Math.floor(Math.random() * coverColors.length)];
-
-        const { error: insertError } = await supabase.from('users').insert({
-            id: data.user.id,
+        const { error: profileError } = await supabase.from('users').insert({
+            id: authData.user.id,
             username,
             display_name: displayName,
             email,
             password_hash: 'managed_by_supabase',
             dh_public_key: 'dh_placeholder',
-            avatar_index: avatarIndex,
-            cover_color: coverColor,
+            avatar_index: Math.floor(Math.random() * 4) + 1,
+            cover_color: ['#FFDDD2','#D4E8C2','#C9E4DE','#D6D0F0','#FAE1C3','#C5D8F0','#F5C6D0','#D0EAD0'][Math.floor(Math.random() * 8)],
         });
-        if (insertError) throw insertError;
 
-        try {
-            const chainResult = await storeUserOnChain(data.user.id, username);
-            if (chainResult.success) {
-                await supabase
-                    .from('users')
-                    .update({ blockchain_tx_hash: chainResult.txHash })
-                    .eq('id', data.user.id);
-            }
-        } catch (err) {
-            console.warn('Blockchain user storage skipped:', err.message);
-        }
-    }
+        if (profileError) throw profileError;
+    };
 
-    async function signOut() {
+    const signOut = async () => {
         await supabase.auth.signOut();
         setUser(null);
-    }
-
-    async function refreshUser() {
-        if (!user?.id) return;
-        const profile = await fetchUserProfile(user.id);
-        setUser(profile);
-    }
+    };
 
     return (
-        <AuthContext.Provider value={{ user, loading, signIn, verifyOtp, signUp, signOut, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
             {children}
         </AuthContext.Provider>
     );
 }
 
-export function useAuth() {
-    return useContext(AuthContext);
-}
+export const useAuth = () => useContext(AuthContext);
+export default AuthContext;
